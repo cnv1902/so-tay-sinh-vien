@@ -1,0 +1,41 @@
+# ==============================================================================
+# Dockerfile cho FastAPI Backend (Môi trường PRODUCTION)
+# ==============================================================================
+
+FROM python:3.11-slim
+
+# Ngăn chặn Python tạo file .pyc và ép stdout không bị buffer
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Thiết lập biến môi trường production
+ENV ENV=production
+
+WORKDIR /app
+
+# Cài đặt các thư viện hệ thống cần thiết (đặc biệt là poppler-utils để xử lý PDF)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    poppler-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+# Sao chép file requirements.txt
+COPY requirements.txt .
+
+# Cài đặt thư viện Python. 
+# Explicitly cài thêm gunicorn để làm Process Manager cho Production
+RUN pip install --no-cache-dir -r requirements.txt gunicorn
+
+# Khởi tạo thư mục cache cho HuggingFace Model
+ENV HF_HOME=/app/.cache/huggingface
+RUN mkdir -p /app/.cache/huggingface
+
+# CHÚ Ý: Sao chép toàn bộ mã nguồn vào image
+# Trong Production, code được "đóng băng" (baked) vào image, không dùng bind mount
+COPY . .
+
+EXPOSE 8000
+
+# Sử dụng Gunicorn với file cấu hình riêng (gunicorn.conf.py).
+# preload_app=True trong conf file đảm bảo embedding model chỉ load 1 lần
+# trong master process, các worker con thừa kế qua Copy-on-Write.
+CMD ["gunicorn", "api.main:app", "-c", "gunicorn.conf.py"]

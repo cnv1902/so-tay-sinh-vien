@@ -1,0 +1,123 @@
+# ==============================================================================
+# ENVIRONMENT & SECRETS
+# ==============================================================================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+
+# ==============================================================================
+# PYTHON (FastAPI & Microservices)
+# ==============================================================================
+__pycache__/
+*/__pycache__/
+*/**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+.uv-cache/
+pyrightconfig.json
+
+# Virtual Environments
+venv/
+env/
+.venv/
+ENV/
+
+# ==============================================================================
+# JAVASCRIPT & NODE (Frontend React / Vite)
+# ==============================================================================
+node_modules/
+*/node_modules/
+*/**/node_modules/
+dist/
+dist-ssr/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+.eslintcache
+
+# ==============================================================================
+# MOBILE (React Native & Expo - VinhUni-Pocket-Guide)
+# ==============================================================================
+.expo/
+*/.expo/
+*/**/.expo/
+web-build/
+.expo-shared/
+
+# Android & iOS Build Artifacts
+*.apk
+*.aab
+*.keystore
+*.jks
+android/app/build/
+android/.gradle/
+android/build/
+ios/build/
+ios/Pods/
+
+# ==============================================================================
+# DATABASE, STORAGE & LOCAL DATA
+# ==============================================================================
+data/
+data/uploads/
+data/qdrant/
+data/postgres/
+data/redis/
+tmp_images/
+documents/
+*.sqlite
+*.sqlite3
+*.db
+*.log
+logs/
+*.tar.gz
+
+# ==============================================================================
+# OPERATING SYSTEM & EDITORS
+# ==============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
+
+# IDEs
+.idea/
+*.swp
+*.swo
+*~
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
