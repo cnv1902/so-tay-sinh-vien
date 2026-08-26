@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-
+import { useTranslation } from 'react-i18next';
 import {
   fetchBuildings,
   fetchDepartments,
@@ -15,6 +15,9 @@ type MapData = {
 };
 
 export function useMapData() {
+  const { i18n } = useTranslation();
+  const currentLang = (i18n.language || 'vi').substring(0, 2);
+
   const [data, setData] = useState<MapData>({
     buildings: null,
     departments: null,
@@ -42,10 +45,11 @@ export function useMapData() {
           walkableAreas,
         ] = await Promise.all([
           fetchBuildings(),
-          fetchDepartments(),
+          fetchDepartments(currentLang),
           fetchPaths(),
           fetchWalkableAreas(),
         ]);
+
 
         if (!mounted) {
           return;
@@ -81,7 +85,8 @@ export function useMapData() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [currentLang]);
+
 
   return {
     ...data,

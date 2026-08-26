@@ -20,6 +20,8 @@ export function useHandbookDocuments(docType?: string) {
       }
       return res.json();
     },
+    staleTime: 5 * 60 * 1000,  // 5 phút — giữ cache khi chuyển tab
+    gcTime: 10 * 60 * 1000,    // 10 phút — không xóa khỏi bộ nhớ
   });
 
   return {
@@ -46,6 +48,8 @@ export function useHandbookDetail(id: string | number) {
       return res.json();
     },
     enabled: !!id,
+    staleTime: 10 * 60 * 1000, // 10 phút — nội dung toàn văn ít thay đổi
+    gcTime: 15 * 60 * 1000,
   });
 
   return {

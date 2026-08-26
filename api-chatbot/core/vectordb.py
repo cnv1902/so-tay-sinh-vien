@@ -42,9 +42,13 @@ logger = logging.getLogger(__name__)
 
 # Mapping: tên filter field → kiểu dữ liệu mong đợi để cast đúng type
 _FILTER_FIELD_TYPES: dict[str, type] = {
-    "year":     int,
-    "doc_type": str,
+    "year":       int,
+    "doc_type":   str,
+    "lang":       str,
+    "scope":      str,
+    "major_code": str,
 }
+
 
 
 # ---------------------------------------------------------------------------

@@ -1,9 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { API_BASE_URL } from '../../services/api';
 import type { CalendarEvent } from '../../types/calendar';
 
+
 export function useCalendarData(month: number, year: number) {
+  const { i18n } = useTranslation();
+  const currentLang = (i18n.language || 'vi').substring(0, 2);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -13,7 +17,7 @@ export function useCalendarData(month: number, year: number) {
       setLoading(true);
       setError(null);
       const res = await axios.get(`${API_BASE_URL}/api/admin/calendar`, {
-        params: { month, year }
+        params: { month, year, lang: currentLang }
       });
       // Sort events by start_time
       const sortedEvents = (res.data || []).sort((a: CalendarEvent, b: CalendarEvent) => {
@@ -26,11 +30,12 @@ export function useCalendarData(month: number, year: number) {
     } finally {
       setLoading(false);
     }
-  }, [month, year]);
+  }, [month, year, currentLang]);
 
   useEffect(() => {
     fetchEvents();
   }, [fetchEvents]);
+
 
   return { events, loading, error, refetch: fetchEvents };
 }

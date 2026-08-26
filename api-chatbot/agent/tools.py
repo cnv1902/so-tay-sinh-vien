@@ -241,31 +241,76 @@ async def search_location_info(category: Optional[str] = None, query: Optional[s
         return "Lỗi hệ thống khi tra cứu địa điểm."
 
 # ===========================================================================
-# Tool 5: search_department_info
+# Tool 5: search_department_info (Semantic Vector Search trên Qdrant)
 # ===========================================================================
 
 class DepartmentInfoInput(BaseModel):
-    query: str = Field(..., description="Tên phòng ban hoặc chức năng (ví dụ: 'Phòng Đào tạo', 'Làm thẻ sinh viên').")
+    query: str = Field(..., description="Tên phòng ban hoặc nhu cầu/thủ tục cần xử lý (ví dụ: 'Làm lại thẻ sinh viên', 'Rút học bạ', 'Xin giấy vay vốn', 'Phòng Đào tạo').")
     building_name: Optional[str] = Field(None, description="Tên tòa nhà (ví dụ: 'Nhà A1', 'Nhà Điều hành'). Bỏ trống nếu không rõ.")
 
 @tool("search_department_info", args_schema=DepartmentInfoInput)
 async def search_department_info(query: str, building_name: Optional[str] = None) -> str:
     """
     Tìm kiếm thông tin các phòng ban TRONG trường (Tên phòng, Số phòng, Tầng, Tòa nhà, Giờ làm việc, SĐT).
-    Cực kỳ hữu ích khi sinh viên hỏi phòng ban ở đâu, hoặc giải quyết giấy tờ ở đâu.
-    Kết quả trả về tọa độ để dẫn đường (navigate_to).
+    Cực kỳ hữu ích khi sinh viên hỏi phòng ban ở đâu, hoặc cần giải quyết thủ tục/giấy tờ/sự việc gì.
+    Kết quả trả về tọa độ GPS để kích hoạt tính năng dẫn đường trên app di động.
     """
-    logger.info(f"[Tool] search_department_info called: query={query}, building={building_name}")
+    logger.info(f"[Tool] search_department_info called: query='{query}', building='{building_name}'")
+    
+    # ── [1] Thử nghiệm tìm kiếm bằng Qdrant Semantic Vector Search ──
+    try:
+        query_vector = await asyncio.to_thread(embed, query)
+        filters = {"doc_type": "phong_ban"}
+        semantic_results = await asyncio.to_thread(
+            qdrant_search,
+            query_vector=query_vector,
+            filters=filters,
+            top_k=2,
+            score_threshold=0.01
+        )
+        
+        if semantic_results:
+            res_list = []
+            for r in semantic_results:
+                meta = r.get("metadata", {})
+                name = meta.get("name", "Phòng ban")
+                b_name = meta.get("building_name", "Khuôn viên trường")
+                floor = meta.get("floor", "?")
+                room = meta.get("room_number", "?")
+                phone = meta.get("phone_number", "Chưa có SĐT")
+                hours = meta.get("working_hours", "Giờ hành chính")
+                coord_token = meta.get("coord_token", "")
+                content = r.get("content", "")
+
+                info = (
+                    f"- **{name}**\n"
+                    f"  🏢 Vị trí: {b_name} (Tầng {floor}, Phòng {room}) {coord_token}\n"
+                    f"  📞 SĐT: {phone}\n"
+                    f"  ⏰ Giờ làm việc: {hours}\n"
+                    f"  📋 Chức năng: {content}"
+                )
+                res_list.append(info)
+
+            logger.info(f"[Tool] search_department_info semantic match: tìm thấy {len(res_list)} phòng ban phù hợp")
+            return "Thông tin phòng ban phụ trách:\n\n" + "\n\n".join(res_list)
+
+    except Exception as e:
+        logger.warning(f"[Tool] Lỗi khi tìm kiếm semantic phòng ban trên Qdrant: {str(e)}, chuyển sang fallback SQL...")
+
+    # ── [2] Fallback sang SQL nếu Qdrant chưa có vector hoặc gặp sự cố ──
     try:
         async with AsyncSessionLocal() as session:
             from sqlalchemy.orm import selectinload
             stmt = select(Department).options(selectinload(Department.building))
             
-            # Tìm trong tên hoặc chức năng của phòng ban
-            stmt = stmt.where(or_(
-                Department.name.ilike(f"%{query}%"),
-                Department.function_description.ilike(f"%{query}%")
-            ))
+            # Tách từ khóa để tìm linh hoạt
+            tokens = [t.strip() for t in query.split() if len(t.strip()) > 1]
+            if tokens:
+                token_filters = [or_(
+                    Department.name.ilike(f"%{t}%"),
+                    Department.function_description.ilike(f"%{t}%")
+                ) for t in tokens[:3]]
+                stmt = stmt.where(or_(*token_filters))
             
             result = await session.execute(stmt)
             departments = result.scalars().all()
@@ -274,31 +319,35 @@ async def search_department_info(query: str, building_name: Optional[str] = None
                 departments = [d for d in departments if d.building and building_name.lower() in d.building.name.lower()]
             
             if not departments:
-                return "Không tìm thấy phòng ban nào khớp với yêu cầu tìm kiếm."
+                # Nếu không tìm thấy, lấy 3 phòng ban chức năng chính để LLM định hướng
+                stmt_fallback = select(Department).options(selectinload(Department.building)).limit(3)
+                res_fb = await session.execute(stmt_fallback)
+                departments = res_fb.scalars().all()
+                if not departments:
+                    return "Không tìm thấy phòng ban nào khớp với yêu cầu tìm kiếm."
                 
             res_list = []
             for d in departments:
-                building = d.building.name if d.building else "Chưa xác định"
-                location_str = f"{building}, Tầng {d.floor or '?'}, Phòng {d.room_number or '?'}"
-                
-                # Tạo một Navigation Hint ngầm định
+                b_name = d.building.name if d.building else "Chưa xác định"
+                location_str = f"{b_name}, Tầng {d.floor or '?'}, Phòng {d.room_number or '?'}"
                 lat = d.latitude or (d.building.latitude if d.building else None)
                 lng = d.longitude or (d.building.longitude if d.building else None)
                 coords = f"[Tọa độ: {lat}, {lng}]" if lat and lng else ""
                 
                 info = (
-                    f"- {d.name}\n"
-                    f"  Vị trí: {location_str} {coords}\n"
-                    f"  SĐT: {d.phone_number or 'Không có'}\n"
-                    f"  Giờ làm việc: {d.working_hours or 'Giờ hành chính'}\n"
-                    f"  Chức năng: {d.function_description or 'Không có mô tả'}"
+                    f"- **{d.name}**\n"
+                    f"  🏢 Vị trí: {location_str} {coords}\n"
+                    f"  📞 SĐT: {d.phone_number or 'Không có'}\n"
+                    f"  ⏰ Giờ làm việc: {d.working_hours or 'Giờ hành chính'}\n"
+                    f"  📋 Chức năng: {d.function_description or 'Tiếp nhận xử lý hồ sơ'}"
                 )
                 res_list.append(info)
                 
-            return "Thông tin phòng ban:\n\n" + "\n\n".join(res_list)
+            return "Thông tin phòng ban (từ CSDL):\n\n" + "\n\n".join(res_list)
     except Exception as e:
         logger.error(f"[Tool] Lỗi truy vấn Department: {str(e)}")
         return "Lỗi hệ thống khi tra cứu phòng ban."
+
 
 
 # ===========================================================================

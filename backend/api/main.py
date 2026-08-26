@@ -70,17 +70,22 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Cấu hình CORS
 def _parse_cors_origins() -> list[str]:
-    raw = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173,http://127.0.0.1:5173").strip()
+    raw = os.getenv(
+        "CORS_ORIGINS", 
+        "http://localhost:3000,http://localhost:5173,http://127.0.0.1:5173,https://admin.covit.site,https://covit.site"
+    ).strip()
     return [o.strip() for o in raw.split(",") if o.strip()]
 
-# Cấu hình CORS
+# Cấu hình CORS - Cho phép toàn bộ subdomain của covit.site
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_parse_cors_origins(),
+    allow_origin_regex=r"^https?://([a-zA-Z0-9-]+\.)*covit\.site(:[0-9]+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # Đăng ký các router với prefix /api/admin
 app.include_router(admin_documents.router, prefix="/api/admin")

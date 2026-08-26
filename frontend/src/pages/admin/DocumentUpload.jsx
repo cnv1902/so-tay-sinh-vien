@@ -36,23 +36,20 @@ const DocumentUpload = () => {
     const fetchDocuments = async () => {
         try {
             const token = localStorage.getItem('access_token');
-            let res = await fetch(`${getChatbotApiUrl()}/api/documents`, {
+            // Nguồn dữ liệu chính xác: backend (8000) — đồng bộ cả chatbot status
+            const res = await fetch(`${getMainApiUrl()}/api/admin/documents`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            if (!res.ok) {
-                res = await fetch(`${getMainApiUrl()}/api/admin/documents`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-            }
             if (res.ok) {
                 const data = await res.json();
                 setDocuments(data);
 
-                // Kiểm tra xem có file nào đang processing không
-                const hasProcessing = data.some(doc => doc.status === 'processing');
-                if (hasProcessing && !polling) {
+                // Polling khi có doc đang xử lý (bất kỳ trạng thái trung gian nào)
+                const inProgressStatuses = ['processing', 'pending_review', 'embedding'];
+                const hasInProgress = data.some(doc => inProgressStatuses.includes(doc.status));
+                if (hasInProgress && !polling) {
                     setPolling(true);
-                } else if (!hasProcessing && polling) {
+                } else if (!hasInProgress && polling) {
                     setPolling(false);
                 }
             }
@@ -70,12 +67,13 @@ const DocumentUpload = () => {
         if (polling) {
             interval = setInterval(() => {
                 fetchDocuments();
-            }, 3000);
+            }, 2000); // Giảm xuống 2s để trạng thái cập nhật nhanh hơn
         }
         return () => {
             if (interval) clearInterval(interval);
         };
     }, [polling]);
+
 
     const handleUpload = async (values) => {
         if (!values.file || values.file.length === 0) {

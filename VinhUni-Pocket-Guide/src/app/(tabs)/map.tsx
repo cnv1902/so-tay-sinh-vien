@@ -1,60 +1,75 @@
-import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  Alert,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useMemo, useState, useEffect } from 'react';
-import * as LocationExpo from 'expo-location';
-import { useNavigationStore } from '../../stores/useNavigationStore';
-import { API_BASE_URL } from '../../services/api';
-import VinhUniMap from '../../components/map/VinhUniMap';
-import { useMapData } from '../../features/map/useMapData';
-import MapCategories from '../../components/map/MapCategories';
-import CurrentLocationButton from '../../components/map/CurrentLocationButton';
-import MapSmartSheet from '../../components/map/MapSmartSheet';
+import { StyleSheet, Text, TouchableOpacity, View, Alert } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useMemo, useState, useEffect } from "react";
+import * as LocationExpo from "expo-location";
+import { useTranslation } from "react-i18next";
+import { useNavigationStore } from "../../stores/useNavigationStore";
+import { API_BASE_URL } from "../../services/api";
+import VinhUniMap from "../../components/map/VinhUniMap";
+import { useMapData } from "../../features/map/useMapData";
+import MapCategories from "../../components/map/MapCategories";
+import CurrentLocationButton from "../../components/map/CurrentLocationButton";
+import MapSmartSheet from "../../components/map/MapSmartSheet";
+import { useLiveNavigation } from "../../features/map/useLiveNavigation";
+import TurnBanner from "../../components/map/TurnBanner";
+import LanguageSwitcher from "../../components/common/LanguageSwitcher";
 
-import {
-  colors,
-  radius,
-  shadows,
-  spacing,
-  typography,
-} from '../../design';
-import type { Location } from '../../types/location';
+import { colors, radius, shadows, spacing, typography } from "../../design";
+import type { Location } from "../../types/location";
 
 export default function MapScreen() {
-  const [userLocation, setUserLocation] = useState<{latitude: number, longitude: number} | null>(null);
+  const { t } = useTranslation();
+  const [userLocation, setUserLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const [routeGeoJSON, setRouteGeoJSON] = useState<any>(null);
-  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
-  
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(
+    null,
+  );
+
   // Routing states
-  const [routingStart, setRoutingStart] = useState<Location | 'USER_LOCATION' | null>(null);
+  const [routingStart, setRoutingStart] = useState<
+    Location | "USER_LOCATION" | null
+  >(null);
   const [routingEnd, setRoutingEnd] = useState<Location | null>(null);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const { destination, clearDestination } = useNavigationStore();
   const { buildings, departments, loading, error } = useMapData();
+
+  // Trích xuất mảng tọa độ tuyến đường cho Live Navigation
+  const routeCoordinates = useMemo(() => {
+    if (!routeGeoJSON?.features?.[0]?.geometry?.coordinates) return [];
+    return routeGeoJSON.features[0].geometry.coordinates.map(
+      (c: [number, number]) => ({
+        latitude: c[1],
+        longitude: c[0],
+      }),
+    );
+  }, [routeGeoJSON]);
+
+  // Hook theo dõi vị trí + hướng thiết bị + tính toán chỉ dẫn rẽ thời gian thực
+  const liveNav = useLiveNavigation(routeCoordinates, isNavigating);
 
   useEffect(() => {
     (async () => {
       const isLocationEnabled = await LocationExpo.hasServicesEnabledAsync();
       if (!isLocationEnabled) {
         Alert.alert(
-          'Dịch vụ vị trí đang tắt',
-          'Vui lòng bật GPS (Vị trí) trong cài đặt thiết bị để hiển thị vị trí của bạn trên bản đồ.',
-          [{ text: 'Đã hiểu' }]
+          "Dịch vụ vị trí đang tắt",
+          "Vui lòng bật GPS (Vị trí) trong cài đặt thiết bị để hiển thị vị trí của bạn trên bản đồ.",
+          [{ text: "Đã hiểu" }],
         );
         return;
       }
 
       let { status } = await LocationExpo.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
+      if (status !== "granted") {
         Alert.alert(
-          'Chưa cấp quyền vị trí',
-          'Bạn cần cấp quyền truy cập vị trí để ứng dụng có thể hiển thị bạn đang ở đâu trong khuôn viên trường.',
-          [{ text: 'Đóng' }]
+          "Chưa cấp quyền vị trí",
+          "Bạn cần cấp quyền truy cập vị trí để ứng dụng có thể hiển thị bạn đang ở đâu trong khuôn viên trường.",
+          [{ text: "Đóng" }],
         );
         return;
       }
@@ -66,7 +81,7 @@ export default function MapScreen() {
           longitude: loc.coords.longitude,
         });
       } catch (e) {
-        console.warn('Không thể lấy vị trí hiện tại:', e);
+        console.warn("Không thể lấy vị trí hiện tại:", e);
       }
     })();
   }, []);
@@ -74,29 +89,43 @@ export default function MapScreen() {
   useEffect(() => {
     if (destination && userLocation) {
       setRoutingEnd(destination as any);
-      setRoutingStart('USER_LOCATION');
+      setRoutingStart("USER_LOCATION");
       clearDestination();
     }
   }, [destination, userLocation]);
 
   useEffect(() => {
     if (routingStart && routingEnd) {
-       const startCoords = routingStart === 'USER_LOCATION' 
-           ? userLocation 
-           : routingStart.coordinate;
-       const endCoords = routingEnd.coordinate;
-       
-       if (startCoords && endCoords) {
-           fetchRoute(startCoords.latitude, startCoords.longitude, endCoords.latitude, endCoords.longitude);
-       }
+      const startCoords =
+        routingStart === "USER_LOCATION"
+          ? liveNav.currentPosition || userLocation
+          : routingStart.coordinate;
+      const endCoords = routingEnd.coordinate;
+
+      if (startCoords && endCoords) {
+        fetchRoute(
+          startCoords.latitude,
+          startCoords.longitude,
+          endCoords.latitude,
+          endCoords.longitude,
+        );
+      }
     } else {
-       setRouteGeoJSON(null);
+      setRouteGeoJSON(null);
+      setIsNavigating(false);
     }
   }, [routingStart, routingEnd, userLocation]);
 
-  const fetchRoute = async (startLat: number, startLng: number, endLat: number, endLng: number) => {
+  const fetchRoute = async (
+    startLat: number,
+    startLng: number,
+    endLat: number,
+    endLng: number,
+  ) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/admin/map/route?start=${startLat},${startLng}&end=${endLat},${endLng}`);
+      const res = await fetch(
+        `${API_BASE_URL}/api/admin/map/route?start=${startLat},${startLng}&end=${endLat},${endLng}`,
+      );
       if (res.ok) {
         const data = await res.json();
         setRouteGeoJSON(data);
@@ -108,7 +137,7 @@ export default function MapScreen() {
 
   const allLocations = useMemo(() => {
     if (!departments) return [];
-    
+
     // Nếu là dữ liệu mảng trực tiếp từ Database API (/api/admin/departments)
     if (Array.isArray(departments)) {
       return departments.map((d: any) => {
@@ -118,7 +147,7 @@ export default function MapScreen() {
           id: String(d.id),
           name: d.name,
           description: d.function_description || d.description || undefined,
-          category: d.is_building ? 'building' : 'administration',
+          category: d.is_building ? "building" : "administration",
           floor: d.floor,
           room: d.room_number,
           phone: d.phone_number,
@@ -138,17 +167,22 @@ export default function MapScreen() {
         const coords = f.geometry.coordinates;
         return {
           id: props.id ? String(props.id) : `dept-${index}`,
-          name: props.name || 'Không tên',
-          description: props.function_description || props.description || props.note || undefined,
-          category: props.is_building ? 'building' : (props.category || 'other'),
+          name: props.name || "Không tên",
+          description:
+            props.function_description ||
+            props.description ||
+            props.note ||
+            undefined,
+          category: props.is_building ? "building" : props.category || "other",
           floor: props.floor,
           room: props.room_number,
           phone: props.phone_number,
           coordinate: {
             latitude: coords[1],
-            longitude: coords[0]
+            longitude: coords[0],
           },
-          purpose: props.function_description || props.description || props.type,
+          purpose:
+            props.function_description || props.description || props.type,
         } as Location;
       });
     }
@@ -156,46 +190,74 @@ export default function MapScreen() {
     return [];
   }, [departments]);
 
+  const currentDisplayPosition = liveNav.currentPosition || userLocation;
+
   return (
     <View style={styles.container}>
-      <VinhUniMap 
-        routeGeoJSON={routeGeoJSON} 
-        userLocation={userLocation} 
+      <VinhUniMap
+        routeGeoJSON={routeGeoJSON}
+        userLocation={currentDisplayPosition}
+        heading={liveNav.heading}
+        animatedHeading={liveNav.animatedHeading}
+        isNavigating={isNavigating}
         buildings={buildings}
         loading={loading}
         error={error}
         onMarkerPress={setSelectedLocation}
       />
 
-      <View style={styles.top}>
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.title}>Bản đồ VinhUni</Text>
-            <Text style={styles.subtitle}>Bản đồ khuôn viên Đại học Vinh</Text>
+      {/* Thanh dẫn đường Turn-by-Turn khi đang bật Live Navigation */}
+      {isNavigating && routeCoordinates.length > 1 && (
+        <TurnBanner
+          instruction={liveNav.nextInstruction}
+          icon={liveNav.nextIcon}
+          distanceToNextTurn={liveNav.distanceToNextTurn}
+          remainingMeters={liveNav.remainingMeters}
+          estimatedSeconds={liveNav.estimatedSeconds}
+          isOffRoute={liveNav.isOffRoute}
+          arrived={liveNav.arrived}
+          onExit={() => setIsNavigating(false)}
+        />
+      )}
+
+      {/* Header thanh tìm kiếm khi không dẫn đường */}
+      {!isNavigating && (
+        <View style={styles.top}>
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.title}>{t("map.title")}</Text>
+              <Text style={styles.subtitle}>{t("map.subtitle")}</Text>
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <LanguageSwitcher />
+            </View>
           </View>
-          <TouchableOpacity style={styles.settings}>
-            <Ionicons name="options-outline" size={22} color={colors.textPrimary} />
-          </TouchableOpacity>
         </View>
+      )}
 
-      </View>
+      {!isNavigating && (
+        <View style={styles.locationButton}>
+          <CurrentLocationButton />
+        </View>
+      )}
 
-      <View style={styles.locationButton}>
-        <CurrentLocationButton />
-      </View>
-
-      <MapSmartSheet 
+      <MapSmartSheet
         locations={allLocations}
         selectedLocation={selectedLocation}
         onSelectLocation={setSelectedLocation}
         onDrawRoute={(start, end) => {
-            setRoutingStart(start);
-            setRoutingEnd(end);
+          setRoutingStart(start);
+          setRoutingEnd(end);
         }}
         onClearRoute={() => {
-            setRoutingStart(null);
-            setRoutingEnd(null);
+          setRoutingStart(null);
+          setRoutingEnd(null);
+          setIsNavigating(false);
         }}
+        onStartNavigation={() => {
+          setIsNavigating(true);
+        }}
+        isNavigating={isNavigating}
       />
     </View>
   );
@@ -208,7 +270,7 @@ const styles = StyleSheet.create({
   },
 
   top: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
@@ -217,15 +279,15 @@ const styles = StyleSheet.create({
   },
 
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: spacing.md,
   },
 
   title: {
     fontSize: typography.size.xxl,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.textPrimary,
   },
 
@@ -239,56 +301,56 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: radius.round,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: colors.surface,
     ...shadows.medium,
   },
 
   locationButton: {
-    position: 'absolute',
+    position: "absolute",
     right: spacing.lg,
     bottom: 140, // Đẩy lên xíu tránh dính vào bottomCard
   },
 
   bottomCardWrapper: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
     borderTopLeftRadius: radius.xxl,
     borderTopRightRadius: radius.xxl,
-    overflow: 'hidden',
+    overflow: "hidden",
     ...shadows.large,
   },
-  
+
   bottomCard: {
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.sm,
     paddingBottom: spacing.xxl, // Thêm khoảng trống bottom
-    backgroundColor: 'rgba(255, 255, 255, 0.65)',
+    backgroundColor: "rgba(255, 255, 255, 0.65)",
   },
 
   handle: {
-    alignSelf: 'center',
+    alignSelf: "center",
     width: 36,
     height: 4,
     borderRadius: radius.round,
-    backgroundColor: 'rgba(15, 23, 42, 0.2)',
+    backgroundColor: "rgba(15, 23, 42, 0.2)",
     marginBottom: spacing.lg,
   },
 
   cardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
 
   cardIcon: {
     width: 48,
     height: 48,
     borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: colors.primaryLight,
   },
 
@@ -299,7 +361,7 @@ const styles = StyleSheet.create({
 
   cardTitle: {
     fontSize: typography.size.md,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.textPrimary,
   },
 

@@ -35,7 +35,11 @@ class AccountResponse(AccountBase):
 # ==========================================
 class DocumentBase(BaseModel):
     title: str
+    title_en: Optional[str] = None
+    title_lao: Optional[str] = None
     content: str
+    content_en: Optional[str] = None
+    content_lao: Optional[str] = None
     category: str
     status: str
 
@@ -44,7 +48,11 @@ class DocumentCreate(DocumentBase):
 
 class DocumentUpdate(BaseModel):
     title: Optional[str] = None
+    title_en: Optional[str] = None
+    title_lao: Optional[str] = None
     content: Optional[str] = None
+    content_en: Optional[str] = None
+    content_lao: Optional[str] = None
     category: Optional[str] = None
     status: Optional[str] = None
 
@@ -63,8 +71,12 @@ class MapLinkRequest(BaseModel):
 
 class EmergencyContactBase(BaseModel):
     name: str
+    name_en: Optional[str] = None
+    name_lao: Optional[str] = None
     phone_number: str
     description: Optional[str] = None
+    description_en: Optional[str] = None
+    description_lao: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     category: str = "POLICE"
@@ -75,8 +87,12 @@ class EmergencyContactCreate(EmergencyContactBase):
 
 class EmergencyContactUpdate(BaseModel):
     name: Optional[str] = None
+    name_en: Optional[str] = None
+    name_lao: Optional[str] = None
     phone_number: Optional[str] = None
     description: Optional[str] = None
+    description_en: Optional[str] = None
+    description_lao: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     category: Optional[str] = None
@@ -113,24 +129,32 @@ class EmergencyTemplateResponse(EmergencyTemplateBase):
 # ==========================================
 class CalendarEventBase(BaseModel):
     title: str
+    title_en: Optional[str] = None
+    title_lao: Optional[str] = None
     category: str
     start_time: datetime
     end_time: datetime
     is_all_day: bool = True
     is_annual: bool = False
     description: Optional[str] = None
+    description_en: Optional[str] = None
+    description_lao: Optional[str] = None
 
 class CalendarEventCreate(CalendarEventBase):
     pass
 
 class CalendarEventUpdate(BaseModel):
     title: Optional[str] = None
+    title_en: Optional[str] = None
+    title_lao: Optional[str] = None
     category: Optional[str] = None
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
     is_all_day: Optional[bool] = None
     is_annual: Optional[bool] = None
     description: Optional[str] = None
+    description_en: Optional[str] = None
+    description_lao: Optional[str] = None
 
 class CalendarEventResponse(CalendarEventBase):
     id: int
@@ -165,9 +189,14 @@ class CalendarEventResponse(CalendarEventBase):
 # ==========================================
 class NewsBase(BaseModel):
     title: str
+    title_en: Optional[str] = None
+    title_lao: Optional[str] = None
     content: str
+    content_en: Optional[str] = None
+    content_lao: Optional[str] = None
     image_url: Optional[str] = None
     is_pinned: bool = False
+
 
 class NewsCreate(NewsBase):
     author_id: int

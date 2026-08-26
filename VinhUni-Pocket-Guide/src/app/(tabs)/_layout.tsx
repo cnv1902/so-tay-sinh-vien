@@ -1,9 +1,13 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Platform } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
-import { colors } from '../../design';
+import { colors, shadows, typography } from '../../design';
 
 export default function TabsLayout() {
+  const { t } = useTranslation();
+
   return (
     <Tabs
       initialRouteName="index"
@@ -14,28 +18,34 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: colors.textTertiary,
 
         tabBarStyle: {
-          height: 72,
+          height: Platform.OS === 'ios' ? 84 : 68,
           paddingTop: 8,
-          paddingBottom: 8,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 10,
           borderTopWidth: 1,
           borderTopColor: colors.border,
           backgroundColor: colors.surface,
+          ...shadows.medium,
         },
 
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
+          fontSize: 10,
+          fontWeight: typography.weight.semibold,
+          letterSpacing: 0.2,
+        },
+
+        tabBarIconStyle: {
+          marginBottom: -2,
         },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Trang chủ',
-          tabBarIcon: ({ color, size }) => (
+          title: t('tabs.home'),
+          tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name="home-outline"
-              size={size}
+              name={focused ? 'home' : 'home-outline'}
+              size={23}
               color={color}
             />
           ),
@@ -45,11 +55,11 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="map"
         options={{
-          title: 'Bản đồ',
-          tabBarIcon: ({ color, size }) => (
+          title: t('tabs.map'),
+          tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name="map-outline"
-              size={size}
+              name={focused ? 'map' : 'map-outline'}
+              size={23}
               color={color}
             />
           ),
@@ -59,11 +69,11 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="chat"
         options={{
-          title: 'Trợ lý',
-          tabBarIcon: ({ color, size }) => (
+          title: t('tabs.chat'),
+          tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name="sparkles-outline"
-              size={size}
+              name={focused ? 'sparkles' : 'sparkles-outline'}
+              size={23}
               color={color}
             />
           ),
@@ -73,11 +83,11 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="calendar"
         options={{
-          title: 'Lịch',
-          tabBarIcon: ({ color, size }) => (
+          title: t('tabs.calendar'),
+          tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name="calendar-outline"
-              size={size}
+              name={focused ? 'calendar' : 'calendar-outline'}
+              size={23}
               color={color}
             />
           ),
@@ -87,11 +97,11 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="news"
         options={{
-          title: 'Tin tức',
-          tabBarIcon: ({ color, size }) => (
+          title: t('tabs.news'),
+          tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name="newspaper-outline"
-              size={size}
+              name={focused ? 'newspaper' : 'newspaper-outline'}
+              size={23}
               color={color}
             />
           ),
@@ -101,11 +111,11 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="services"
         options={{
-          title: 'Sổ tay',
-          tabBarIcon: ({ color, size }) => (
+          title: t('tabs.services'),
+          tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name="book-outline"
-              size={size}
+              name={focused ? 'book' : 'book-outline'}
+              size={23}
               color={color}
             />
           ),

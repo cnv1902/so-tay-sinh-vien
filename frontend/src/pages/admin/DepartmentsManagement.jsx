@@ -6,7 +6,6 @@ import { getMainApiUrl } from '../../config/api';
 const { TabPane } = Tabs;
 const { Option } = Select;
 const { TextArea } = Input;
-const API_BASE = getMainApiUrl();
 
 export default function DepartmentsManagement() {
   const [activeTab, setActiveTab] = useState('departments');
@@ -27,7 +26,8 @@ export default function DepartmentsManagement() {
 
   const fetchBuildings = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/admin/buildings`);
+      const res = await fetch(`${getMainApiUrl()}/api/admin/buildings`);
+
       if (res.ok) {
         const data = await res.json();
         setBuildings(data);
@@ -39,7 +39,7 @@ export default function DepartmentsManagement() {
 
   const fetchDepartments = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/admin/departments`);
+      const res = await fetch(`${getMainApiUrl()}/api/admin/departments`);
       if (res.ok) {
         const data = await res.json();
         setDepartments(data);
@@ -60,7 +60,7 @@ export default function DepartmentsManagement() {
   }, []);
 
   const handleDelete = async (id, type) => {
-    const url = `${API_BASE}/api/admin/${type}/${id}`;
+    const url = `${getMainApiUrl()}/api/admin/${type}/${id}`;
     try {
       const res = await fetch(url, { method: 'DELETE' });
       if (res.ok) {
@@ -97,8 +97,8 @@ export default function DepartmentsManagement() {
   const handleDeptSubmit = async (values) => {
     try {
       const url = editingDept 
-        ? `${API_BASE}/api/admin/departments/${editingDept.id}` 
-        : `${API_BASE}/api/admin/departments`;
+        ? `${getMainApiUrl()}/api/admin/departments/${editingDept.id}` 
+        : `${getMainApiUrl()}/api/admin/departments`;
       const method = editingDept ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
@@ -142,8 +142,8 @@ export default function DepartmentsManagement() {
   const handleBuildingSubmit = async (values) => {
     try {
       const url = editingBuilding 
-        ? `${API_BASE}/api/admin/buildings/${editingBuilding.id}` 
-        : `${API_BASE}/api/admin/buildings`;
+        ? `${getMainApiUrl()}/api/admin/buildings/${editingBuilding.id}` 
+        : `${getMainApiUrl()}/api/admin/buildings`;
       const method = editingBuilding ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
@@ -244,7 +244,7 @@ export default function DepartmentsManagement() {
           <Button 
             onClick={async () => {
               try {
-                const res = await fetch(`${API_BASE}/api/admin/departments/seed`, { method: 'POST' });
+                const res = await fetch(`${getMainApiUrl()}/api/admin/departments/seed`, { method: 'POST' });
                 if (res.ok) {
                   message.success("Đã đồng bộ dữ liệu từ GeoJSON thành công!");
                   fetchData();

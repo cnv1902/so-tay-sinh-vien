@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
+  Animated,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -8,7 +10,9 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 import {
   colors,
@@ -18,235 +22,285 @@ import {
   typography,
 } from '../../design';
 import EmergencyModal from '../../components/emergency/EmergencyModal';
+import { useHandbookStore } from '../../stores/useHandbookStore';
+import LanguageSwitcher from '../../components/common/LanguageSwitcher';
+
+/** Micro-interaction: scale on press */
+function PressableScale({
+  style,
+  onPress,
+  children,
+  activeScale = 0.96,
+}: {
+  style?: any;
+  onPress?: () => void;
+  children: React.ReactNode;
+  activeScale?: number;
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const pressIn = () =>
+    Animated.spring(scale, { toValue: activeScale, useNativeDriver: true, speed: 30 }).start();
+  const pressOut = () =>
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 30 }).start();
+
+  return (
+    <Pressable onPress={onPress} onPressIn={pressIn} onPressOut={pressOut}>
+      <Animated.View style={[style, { transform: [{ scale }] }]}>
+        {children}
+      </Animated.View>
+    </Pressable>
+  );
+}
 
 export default function HomeScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const [sosVisible, setSosVisible] = useState(false);
+  const setPendingCategory = useHandbookStore((s) => s.setPendingCategory);
+
+  const goToHandbook = (category: string) => {
+    setPendingCategory(category);
+    router.push('/(tabs)/services');
+  };
 
   return (
     <View style={styles.container}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.md }]}
       >
-        {/* Header */}
+        {/* ── Header ── */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.appName}>VinhUni Book</Text>
-
-            <Text style={styles.subtitle}>
-              Sổ tay Sinh viên Đại học Vinh
-            </Text>
+            <Text style={styles.appName}>{t('home.greeting')}</Text>
+            <Text style={styles.subtitle}>{t('home.subGreeting')}</Text>
           </View>
 
-          <TouchableOpacity 
-            style={styles.notificationButton}
-            onPress={() => router.push('/(tabs)/news')}
-          >
-            <Ionicons
-              name="notifications-outline"
-              size={22}
-              color={colors.textPrimary}
-            />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <LanguageSwitcher style={{ marginRight: spacing.sm }} />
+            <TouchableOpacity
+              style={styles.notificationButton}
+              onPress={() => router.push('/(tabs)/news')}
+            >
+              <Ionicons name="notifications-outline" size={22} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Search */}
-        <TouchableOpacity 
+        {/* ── Search ── */}
+        <TouchableOpacity
           style={styles.searchContainer}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
           onPress={() => router.push('/(tabs)/services')}
         >
-          <Ionicons
-            name="search-outline"
-            size={20}
-            color={colors.textSecondary}
-          />
-
+          <Ionicons name="search-outline" size={18} color={colors.textSecondary} />
           <TextInput
-            placeholder="Tìm kiếm quy chế, đề án, lịch trình..."
+            placeholder={t('handbook.searchPlaceholder')}
             placeholderTextColor={colors.textTertiary}
             style={styles.searchInput}
             editable={false}
           />
+          <View style={styles.searchHint}>
+            <Text style={styles.searchHintText}>{t('common.search')}</Text>
+          </View>
         </TouchableOpacity>
 
-        {/* Map Banner */}
-        <TouchableOpacity 
+        {/* ── Map Hero Banner (Flagship Feature) ── */}
+        <PressableScale
           style={styles.mapCard}
-          activeOpacity={0.85}
           onPress={() => router.push('/(tabs)/map')}
         >
-          <View style={styles.mapIcon}>
-            <Ionicons
-              name="map"
-              size={28}
-              color={colors.primary}
-            />
+          {/* Background pattern dots */}
+          <View style={styles.mapCardBg} pointerEvents="none">
+            <View style={styles.mapDotLg} />
+            <View style={styles.mapDotSm} />
           </View>
 
-          <Text style={styles.mapTitle}>
-            Bản đồ VinhUni
-          </Text>
+          <View style={styles.mapCardContent}>
+            <View style={styles.mapBadge}>
+              <Text style={styles.mapBadgeText}>3D CAMPUS</Text>
+            </View>
 
-          <Text style={styles.mapDescription}>
-            Tìm phòng học, tòa nhà và chỉ đường trong khuôn viên Đại học Vinh.
-          </Text>
+            <View style={styles.mapIcon}>
+              <Ionicons name="map" size={30} color={colors.accent} />
+            </View>
 
-          <View style={styles.mapButton}>
-            <Text style={styles.mapButtonText}>
-              Mở bản đồ
+            <Text style={styles.mapTitle}>{t('home.mapHeroTitle')}</Text>
+            <Text style={styles.mapDescription}>
+              {t('home.mapHeroDesc')}
             </Text>
 
-            <Ionicons
-              name="arrow-forward"
-              size={18}
-              color={colors.white}
-            />
+            <View style={styles.mapButton}>
+              <Text style={styles.mapButtonText}>{t('home.exploreMap')}</Text>
+              <Ionicons name="arrow-forward" size={16} color={colors.primary} />
+            </View>
           </View>
-        </TouchableOpacity>
+        </PressableScale>
 
-        {/* Quick Access */}
-        <Text style={styles.sectionTitle}>
-          Truy cập nhanh
-        </Text>
+        {/* ── Quick Access ── */}
+        <Text style={styles.sectionTitle}>{t('home.quickActions')}</Text>
 
         <View style={styles.quickGrid}>
           <QuickAction
-            icon="calendar-outline"
-            title="Lịch biểu"
+            icon="calendar"
+            title={t('tabs.calendar')}
+            color={colors.primary}
+            bg={colors.primaryLight}
             onPress={() => router.push('/(tabs)/calendar')}
           />
-
           <QuickAction
-            icon="newspaper-outline"
-            title="Tin tức"
+            icon="newspaper"
+            title={t('tabs.news')}
+            color="#2E6B3E"
+            bg="#E8F5EC"
             onPress={() => router.push('/(tabs)/news')}
           />
-
           <QuickAction
-            icon="book-outline"
-            title="Sổ tay SV"
+            icon="book"
+            title={t('tabs.services')}
+            color="#7B3FA0"
+            bg="#F2E8FA"
             onPress={() => router.push('/(tabs)/services')}
           />
-
-          <QuickAction
-            icon="alert-circle"
-            title="SOS"
-            danger
-            onPress={() => setSosVisible(true)}
-          />
+          {/* SOS — điểm nhấn riêng: nút pulse khẩn cấp */}
+          <SosQuickAction onPress={() => setSosVisible(true)} />
         </View>
 
-        {/* Services / Cẩm nang */}
-        <Text style={styles.sectionTitle}>
-          Cẩm nang sinh viên
-        </Text>
+        {/* ── Services / Cẩm nang ── */}
+        <Text style={styles.sectionTitle}>{t('home.categoriesTitle')}</Text>
 
         <View style={styles.serviceCard}>
           <ServiceItem
             icon="document-text-outline"
-            title="Đề án & Quy chế tuyển sinh"
-            onPress={() => router.push('/(tabs)/services')}
+            title={t('handbook.categories.quy_che_dao_tao')}
+            onPress={() => goToHandbook('quy_che_dao_tao')}
           />
-
           <ServiceItem
             icon="cash-outline"
-            title="Học phí & Học bổng"
-            onPress={() => router.push('/(tabs)/services')}
+            title={t('handbook.categories.hoc_phi_hoc_bong')}
+            onPress={() => goToHandbook('hoc_phi_hoc_bong')}
           />
-
           <ServiceItem
             icon="business-outline"
-            title="Cơ sở vật chất & Ký túc xá"
-            onPress={() => router.push('/(tabs)/services')}
+            title={t('handbook.categories.co_so_vat_chat')}
+            onPress={() => goToHandbook('co_so_vat_chat')}
           />
-
           <ServiceItem
             icon="sparkles-outline"
-            title="Hỏi đáp cùng Trợ lý AI"
+            title={t('chat.title')}
             onPress={() => router.push('/(tabs)/chat')}
+            accent
           />
         </View>
       </ScrollView>
 
-      {/* Modal SOS Khẩn Cấp 1 chạm */}
-      <EmergencyModal
-        visible={sosVisible}
-        onClose={() => setSosVisible(false)}
-      />
+      {/* Modal SOS Khẩn Cấp */}
+      <EmergencyModal visible={sosVisible} onClose={() => setSosVisible(false)} />
     </View>
   );
 }
 
+
+// ── Quick Action Normal ──
 function QuickAction({
   icon,
   title,
-  danger = false,
+  color,
+  bg,
   onPress,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
-  danger?: boolean;
+  color: string;
+  bg: string;
   onPress?: () => void;
 }) {
-  return (
-    <TouchableOpacity 
-      style={styles.quickItem}
-      activeOpacity={0.75}
-      onPress={onPress}
-    >
-      <View
-        style={[
-          styles.quickIcon,
-          danger && styles.quickIconDanger,
-        ]}
-      >
-        <Ionicons
-          name={icon}
-          size={24}
-          color={danger ? colors.danger : colors.primary}
-        />
-      </View>
+  const scale = useRef(new Animated.Value(1)).current;
+  const pressIn = () =>
+    Animated.spring(scale, { toValue: 0.94, useNativeDriver: true, speed: 30 }).start();
+  const pressOut = () =>
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 30 }).start();
 
-      <Text style={[styles.quickTitle, danger && { color: colors.danger, fontWeight: '700' }]}>
-        {title}
-      </Text>
-    </TouchableOpacity>
+  return (
+    <Pressable onPress={onPress} onPressIn={pressIn} onPressOut={pressOut} style={styles.quickItem}>
+      <Animated.View style={{ alignItems: 'center', transform: [{ scale }] }}>
+        <View style={[styles.quickIcon, { backgroundColor: bg }]}>
+          <Ionicons name={icon} size={24} color={color} />
+        </View>
+        <Text style={styles.quickTitle}>{title}</Text>
+      </Animated.View>
+    </Pressable>
   );
 }
 
+// ── SOS Quick Action — Pulse animation riêng ──
+function SosQuickAction({ onPress }: { onPress?: () => void }) {
+  const pulse = useRef(new Animated.Value(1)).current;
+  const scale = useRef(new Animated.Value(1)).current;
+
+  React.useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1.18, duration: 900, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 900, useNativeDriver: true }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, []);
+
+  const pressIn = () =>
+    Animated.spring(scale, { toValue: 0.92, useNativeDriver: true, speed: 30 }).start();
+  const pressOut = () =>
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 30 }).start();
+
+  return (
+    <Pressable onPress={onPress} onPressIn={pressIn} onPressOut={pressOut} style={styles.quickItem}>
+      <Animated.View style={{ alignItems: 'center', transform: [{ scale }] }}>
+        {/* Pulse ring */}
+        <View style={{ position: 'relative', width: 50, height: 50, alignItems: 'center', justifyContent: 'center' }}>
+          <Animated.View
+            style={[
+              styles.sosPulseRing,
+              { transform: [{ scale: pulse }], opacity: pulse.interpolate({ inputRange: [1, 1.18], outputRange: [0.45, 0] }) },
+            ]}
+          />
+          <View style={styles.sosIconBox}>
+            <Ionicons name="alert-circle" size={24} color={colors.danger} />
+          </View>
+        </View>
+        <Text style={[styles.quickTitle, styles.sosTitleText]}>SOS</Text>
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+// ── Service Item ──
 function ServiceItem({
   icon,
   title,
   onPress,
+  accent = false,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
   onPress?: () => void;
+  accent?: boolean;
 }) {
   return (
-    <TouchableOpacity 
-      style={styles.serviceItem}
-      activeOpacity={0.7}
-      onPress={onPress}
-    >
-      <View style={styles.serviceIcon}>
-        <Ionicons
-          name={icon}
-          size={21}
-          color={colors.primary}
-        />
+    <TouchableOpacity style={styles.serviceItem} activeOpacity={0.7} onPress={onPress}>
+      <View style={[styles.serviceIcon, accent && styles.serviceIconAccent]}>
+        <Ionicons name={icon} size={20} color={accent ? colors.accent : colors.primary} />
       </View>
-
-      <Text style={styles.serviceTitle}>
+      <Text style={[styles.serviceTitle, accent && { color: colors.accent, fontWeight: '700' }]}>
         {title}
       </Text>
-
       <Ionicons
         name="chevron-forward"
-        size={20}
-        color={colors.textTertiary}
+        size={18}
+        color={accent ? colors.accentDark : colors.textTertiary}
       />
     </TouchableOpacity>
   );
@@ -259,29 +313,36 @@ const styles = StyleSheet.create({
   },
 
   content: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxxl,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xxxl + spacing.massive,
   },
 
+  // ── Header ──
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: spacing.sm,
     marginBottom: spacing.lg,
   },
 
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+
   appName: {
     fontSize: typography.size.xxl,
-    lineHeight: typography.lineHeight.xxl,
-    fontWeight: '700',
-    color: colors.textPrimary,
+    fontWeight: typography.weight.extrabold,
+    color: colors.primary,
+    letterSpacing: typography.letterSpacing.tight,
   },
 
   subtitle: {
-    marginTop: spacing.xs,
-    fontSize: typography.size.sm,
+    marginTop: 2,
+    fontSize: typography.size.xs,
     color: colors.textSecondary,
+    letterSpacing: typography.letterSpacing.wide,
   },
 
   notificationButton: {
@@ -290,86 +351,162 @@ const styles = StyleSheet.create({
     borderRadius: radius.round,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
-    ...shadows.small,
+    backgroundColor: colors.primaryLight,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
 
+  // ── Search ──
   searchContainer: {
-    height: 50,
+    height: 52,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
     backgroundColor: colors.surface,
     borderRadius: radius.round,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xxl,
+    borderWidth: 1,
+    borderColor: colors.border,
     ...shadows.small,
   },
 
   searchInput: {
     flex: 1,
-    marginLeft: spacing.md,
-    fontSize: typography.size.md,
+    marginLeft: spacing.sm,
+    fontSize: typography.size.sm,
     color: colors.textPrimary,
   },
 
-  mapCard: {
-    padding: spacing.xl,
-    borderRadius: radius.xxl,
+  searchHint: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: radius.round,
     backgroundColor: colors.primaryLight,
+  },
+
+  searchHintText: {
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.semibold,
+    color: colors.primary,
+  },
+
+  // ── Map Hero Card ──
+  mapCard: {
+    borderRadius: radius.xxl,
+    backgroundColor: colors.primary,
     marginBottom: spacing.xxl,
+    overflow: 'hidden',
+    ...shadows.large,
+  },
+
+  mapCardBg: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  },
+
+  mapDotLg: {
+    position: 'absolute',
+    right: -40,
+    top: -40,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+
+  mapDotSm: {
+    position: 'absolute',
+    right: 20,
+    bottom: -20,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(200, 148, 58, 0.15)',
+  },
+
+  mapCardContent: {
+    padding: spacing.xl,
+  },
+
+  mapBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(200, 148, 58, 0.20)',
+    borderWidth: 1,
+    borderColor: 'rgba(200, 148, 58, 0.40)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radius.round,
+    marginBottom: spacing.md,
+  },
+
+  mapBadgeText: {
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.bold,
+    color: colors.accent,
+    letterSpacing: typography.letterSpacing.wider,
   },
 
   mapIcon: {
-    width: 52,
-    height: 52,
+    width: 56,
+    height: 56,
     borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: 'rgba(255,255,255,0.12)',
     marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
   },
 
   mapTitle: {
     fontSize: typography.size.xl,
-    fontWeight: '700',
-    color: colors.textPrimary,
+    fontWeight: typography.weight.extrabold,
+    color: colors.white,
+    letterSpacing: typography.letterSpacing.tight,
   },
 
   mapDescription: {
     marginTop: spacing.sm,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.md,
-    color: colors.textSecondary,
+    color: 'rgba(255,255,255,0.72)',
   },
 
   mapButton: {
     marginTop: spacing.lg,
+    alignSelf: 'flex-start',
     height: 44,
     paddingHorizontal: spacing.lg,
     borderRadius: radius.round,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.white,
+    ...shadows.accent,
   },
 
   mapButtonText: {
-    color: colors.white,
+    color: colors.primary,
     fontSize: typography.size.sm,
-    fontWeight: '600',
+    fontWeight: typography.weight.bold,
   },
 
+  // ── Section Title ──
   sectionTitle: {
     marginBottom: spacing.md,
     fontSize: typography.size.lg,
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
     color: colors.textPrimary,
+    letterSpacing: typography.letterSpacing.tight,
   },
 
+  // ── Quick Grid ──
   quickGrid: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.sm,
     marginBottom: spacing.xxl,
   },
 
@@ -379,33 +516,59 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg,
     borderRadius: radius.lg,
     backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
     ...shadows.small,
   },
 
   quickIcon: {
-    width: 46,
-    height: 46,
+    width: 50,
+    height: 50,
     borderRadius: radius.round,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primaryLight,
     marginBottom: spacing.sm,
   },
 
-  quickIconDanger: {
-    backgroundColor: '#FEECEC',
-  },
-
   quickTitle: {
-    fontSize: typography.size.sm,
-    fontWeight: '600',
-    color: colors.textPrimary,
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.semibold,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
 
+  // SOS
+  sosPulseRing: {
+    position: 'absolute',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: colors.danger,
+  },
+
+  sosIconBox: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.dangerLight,
+    borderWidth: 1.5,
+    borderColor: 'rgba(192, 57, 43, 0.3)',
+  },
+
+  sosTitleText: {
+    color: colors.danger,
+    fontWeight: typography.weight.bold,
+  },
+
+  // ── Service Card ──
   serviceCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
     ...shadows.small,
   },
 
@@ -427,10 +590,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
   },
 
+  serviceIconAccent: {
+    backgroundColor: colors.accentLight,
+  },
+
   serviceTitle: {
     flex: 1,
     marginLeft: spacing.md,
     fontSize: typography.size.md,
+    fontWeight: typography.weight.medium,
     color: colors.textPrimary,
   },
 });

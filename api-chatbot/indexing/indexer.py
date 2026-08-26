@@ -36,21 +36,18 @@ logger = logging.getLogger(__name__)
 
 def _content_hash_uuid(content: str, source_file: str = "", page: int = 0) -> str:
     """
-    Sinh UUID v5 deterministic từ nội dung chunk.
+def _content_hash_uuid(content: str, source_file: str = "", page: int = 0, lang: str = "vi") -> str:
+    """
+    Sinh deterministic UUID v5 từ nội dung chunk, source file, page và lang.
 
-    UUID v5 dùng namespace + tên → cùng input luôn cho cùng UUID.
-    Điều này đảm bảo tính idempotent khi re-index tài liệu.
-
-    Args:
-        content:     Nội dung chunk (dùng 200 ký tự đầu làm fingerprint).
-        source_file: Tên file tài liệu gốc.
-        page:        Số trang trong tài liệu.
+    Đảm bảo: cùng một chunk (cùng file, trang, ngôn ngữ, nội dung) luôn ra cùng 1 UUID
+    → Upsert vào Qdrant là idempotent, re-index không bị duplicate points.
 
     Returns:
         Chuỗi UUID dạng "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx".
     """
-    # Tạo chuỗi fingerprint kết hợp: file + trang + nội dung
-    fingerprint = f"{Path(source_file).name}|p{page}|{content[:200].strip()}"
+    # Tạo chuỗi fingerprint kết hợp: file + trang + ngôn ngữ + nội dung
+    fingerprint = f"{Path(source_file).name}|p{page}|{lang}|{content[:200].strip()}"
     # Dùng DNS namespace (arbitrary — chỉ cần nhất quán trong project)
     return str(uuid_lib.uuid5(uuid_lib.NAMESPACE_DNS, fingerprint))
 
@@ -110,12 +107,14 @@ def build_points(
     for chunk, hybrid_vec in zip(normalized_chunks, hybrid_vectors):
         meta = chunk.get("metadata", {})
         scope = normalize_scope(meta.get("scope", meta.get("faculty", "all")))
+        lang = str(meta.get("lang", "vi"))
 
         # Content-hash UUID — idempotent khi re-index
         point_id = _content_hash_uuid(
             content=chunk["content"],
             source_file=str(meta.get("source_file", "")),
             page=int(meta.get("page", 0)),
+            lang=lang,
         )
 
         # Payload = content + tất cả metadata (flat structure cho Qdrant filter)
@@ -129,6 +128,7 @@ def build_points(
             "chunk_type":  repair_mojibake(str(meta.get("chunk_type", "paragraph"))),
             "major":       repair_mojibake(str(meta.get("major", ""))),
             "major_code":  repair_mojibake(str(meta.get("major_code", ""))),
+            "lang":        lang,
         }
 
         points.append(qmodels.PointStruct(

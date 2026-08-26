@@ -199,9 +199,20 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error("[Startup] [2/3] Lỗi Qdrant: %s", str(e))
 
+    # [3/3] Tự động Vectorize & Đồng bộ danh mục Phòng ban lên Qdrant
+    logger.info("[Startup] [3/3] Đồng bộ Vector Phòng ban lên Qdrant...")
+    try:
+        import asyncio
+        from core.department_indexer import index_all_departments
+        asyncio.create_task(index_all_departments())
+        logger.info("[Startup] [3/3] Task đồng bộ Vector Phòng ban ✅ đã được kích hoạt ngầm.")
+    except Exception as e:
+        logger.error("[Startup] [3/3] Lỗi khởi tạo task đồng bộ phòng ban: %s", str(e))
+
     logger.info("=" * 60)
     logger.info("✅ API SẴN SÀNG PHỤC VỤ | http://0.0.0.0:%s", os.getenv("API_PORT", "8000"))
     logger.info("=" * 60)
+
 
     yield  # ← Ứng dụng đang chạy và phục vụ requests
 
@@ -254,7 +265,10 @@ def _parse_cors_origins() -> list[str]:
     Returns:
         ["http://localhost:3000", "https://tuyensinh.vinhuni.edu.vn"]
     """
-    raw = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173").strip()
+    raw = os.getenv(
+        "CORS_ORIGINS", 
+        "http://localhost:3000,http://localhost:5173,https://admin.covit.site,https://covit.site,https://tuyensinh.vinhuni.edu.vn"
+    ).strip()
     origins = [o.strip() for o in raw.split(",") if o.strip()]
 
     logger.info("[CORS] Cho phép origins: %s", origins)
@@ -264,16 +278,14 @@ def _parse_cors_origins() -> list[str]:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_parse_cors_origins(),
+    allow_origin_regex=r"^https?://([a-zA-Z0-9-]+\.)*covit\.site(:[0-9]+)?$",
     allow_credentials=True,          # Cho phép cookie/Authorization header
-    allow_methods=["GET", "POST", "DELETE", "PUT", "OPTIONS"],   # Cho phép các method cần thiết bao gồm DELETE cho quản lý tài liệu
-    allow_headers=[
-        "Content-Type",
-        "Authorization",
-        "X-Request-ID",              # Custom header cho request tracing
-    ],
+    allow_methods=["*"],
+    allow_headers=["*"],
     expose_headers=["X-Request-ID"], # Cho phép client đọc header này từ response
     max_age=3600,                    # Cache preflight response 1 giờ
 )
+
 
 
 # ---------------------------------------------------------------------------
@@ -326,8 +338,22 @@ app.include_router(health_router.router)   # GET /health
 app.include_router(document_router.router)   # POST /api/documents/*
 app.include_router(admin_config_router.router) # GET, POST /admin/slots, /admin/providers
 
+@app.post("/api/sync/departments", tags=["Sync"])
+async def sync_all_departments_endpoint():
+    """Endpoint đồng bộ lại toàn bộ vector phòng ban lên Qdrant."""
+    from core.department_indexer import index_all_departments
+    count = await index_all_departments()
+    return {"message": f"Đã đồng bộ {count} phòng ban lên Qdrant thành công", "count": count}
 
-logger.info("[Router] Đã đăng ký: POST /api/chat | GET /health | POST /api/documents/*")
+@app.post("/api/sync/departments/{dept_id}", tags=["Sync"])
+async def sync_single_department_endpoint(dept_id: int):
+    """Endpoint đồng bộ hoặc cập nhật vector của 1 phòng ban cụ thể."""
+    from core.department_indexer import sync_single_department
+    success = await sync_single_department(dept_id)
+    return {"success": success, "dept_id": dept_id}
+
+logger.info("[Router] Đã đăng ký: POST /api/chat | GET /health | POST /api/documents/* | POST /api/sync/departments")
+
 
 
 # ---------------------------------------------------------------------------

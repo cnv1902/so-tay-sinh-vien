@@ -1,4 +1,5 @@
 import 'react-native-gesture-handler';
+import '../i18n';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useState, useEffect } from 'react';
@@ -7,6 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AnimatedSplashScreen from '../components/AnimatedSplashScreen';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
 
 // Giữ lại Splash Screen native cho đến khi app sẵn sàng
 SplashScreen.preventAutoHideAsync();

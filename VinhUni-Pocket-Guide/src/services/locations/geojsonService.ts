@@ -15,9 +15,9 @@ export async function fetchBuildings() {
   return fetchGeoJSON('/vinhuni_buildings.geojson');
 }
 
-export async function fetchDepartments() {
+export async function fetchDepartments(lang: string = 'vi') {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/admin/departments`);
+    const res = await fetch(`${API_BASE_URL}/api/admin/departments?lang=${lang}`);
     if (res.ok) {
       return await res.json();
     }
@@ -31,6 +31,7 @@ export async function fetchDepartments() {
     return [];
   }
 }
+
 
 export async function fetchPaths() {
   try {

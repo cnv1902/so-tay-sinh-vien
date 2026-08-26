@@ -1,12 +1,12 @@
 export type LocationCategory =
-  | 'building'
-  | 'classroom'
-  | 'administration'
-  | 'food'
-  | 'transport'
-  | 'healthcare'
-  | 'security'
-  | 'other';
+  | "building"
+  | "classroom"
+  | "administration"
+  | "food"
+  | "transport"
+  | "healthcare"
+  | "security"
+  | "other";
 
 export type Coordinate = {
   latitude: number;

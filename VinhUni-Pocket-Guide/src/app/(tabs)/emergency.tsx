@@ -7,75 +7,136 @@ import {
   ScrollView,
   ActivityIndicator,
   Linking,
-  Alert
+  Alert,
+  Platform,
 } from 'react-native';
+
 import { Ionicons } from '@expo/vector-icons';
 import * as LocationExpo from 'expo-location';
-
+import { useTranslation } from 'react-i18next';
 import { colors, radius, shadows, spacing, typography } from '../../design';
 import { API_BASE_URL } from '../../services/api';
+import LanguageSwitcher from '../../components/common/LanguageSwitcher';
 
-type EmergencyTemplate = {
-  id: string;
-  category: string;
-  message_template: string;
+import { usePersonalEmergencyStore } from '../../stores/usePersonalEmergencyStore';
+import PersonalContactModal from '../../components/emergency/PersonalContactModal';
+
+export interface EmergencyContactItem {
+  id: number | string;
+  name: string;
+  phone_number: string;
+  description?: string;
+  category?: string;
+  ward?: string;
+  latitude?: number;
+  longitude?: number;
+  isPersonal?: boolean;
+}
+
+const getCategoryStyle = (category?: string, name?: string, isPersonal?: boolean) => {
+  if (isPersonal) {
+    return { icon: 'heart', color: '#10B981', bg: '#D1FAE5' };
+  }
+  const cat = (category || '').toUpperCase();
+  const lowerName = (name || '').toLowerCase();
+
+  if (cat.includes('MED') || cat.includes('Y_TE') || lowerName.includes('y tế') || lowerName.includes('cấp cứu')) {
+    return { icon: 'medkit', color: '#10B981', bg: '#D1FAE5' };
+  }
+  if (cat.includes('FIRE') || lowerName.includes('chữa cháy') || lowerName.includes('cứu hỏa')) {
+    return { icon: 'flame', color: '#F97316', bg: '#FFEDD5' };
+  }
+  if (cat.includes('SEC') || cat.includes('POLICE') || lowerName.includes('bảo vệ') || lowerName.includes('an ninh') || lowerName.includes('công an')) {
+    return { icon: 'shield-checkmark', color: '#EF4444', bg: '#FEE2E2' };
+  }
+  return { icon: 'call', color: '#2563EB', bg: '#DBEAFE' };
 };
 
-const FALLBACK_TEMPLATES: EmergencyTemplate[] = [
-  { id: '1', category: 'SOS', message_template: 'Cứu tôi với! Tôi đang gặp nguy hiểm tại địa chỉ: {location}' },
-  { id: '2', category: 'MEDICAL', message_template: 'Tôi cần cấp cứu y tế khẩn cấp. Vị trí của tôi: {location}' },
-  { id: '3', category: 'POLICE', message_template: 'Xin chào, tôi cần báo cáo một sự cố an ninh. Vị trí hiện tại: {location}' }
-];
-
 export default function EmergencyScreen() {
-  const [templates, setTemplates] = useState<EmergencyTemplate[]>([]);
+  const { t, i18n } = useTranslation();
+  const currentLang = (i18n.language || 'vi').substring(0, 2);
+  const { contact } = usePersonalEmergencyStore();
+  const [personalModalVisible, setPersonalModalVisible] = useState(false);
+  const [contacts, setContacts] = useState<EmergencyContactItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    fetchTemplates();
-  }, []);
+    fetchContacts();
+  }, [currentLang]);
 
-  const fetchTemplates = async () => {
+  const fetchContacts = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/admin/emergency/templates`);
+      const res = await fetch(`${API_BASE_URL}/api/admin/emergency/contacts?lang=${currentLang}`);
       if (res.ok) {
         const data = await res.json();
-        setTemplates(data.length > 0 ? data : FALLBACK_TEMPLATES);
-      } else {
-        setTemplates(FALLBACK_TEMPLATES);
+        setContacts(data);
       }
     } catch (e) {
-      setTemplates(FALLBACK_TEMPLATES);
+      console.warn('Lỗi tải danh bạ khẩn cấp:', e);
     } finally {
       setLoading(false);
     }
   };
 
-  const sendSOSMessage = async (templateText: string) => {
+
+  const handleCall = (phoneNumber: string) => {
+    Linking.openURL(`tel:${phoneNumber}`).catch(() => {
+      Alert.alert(t('common.error'), 'Không thể khởi chạy cuộc gọi trên thiết bị này.');
+    });
+  };
+
+  const sendSOSMessage = async () => {
+    if (!contact) {
+      setPersonalModalVisible(true);
+      return;
+    }
+
     try {
       setSending(true);
       let { status } = await LocationExpo.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Lỗi', 'Ứng dụng cần quyền truy cập vị trí để đính kèm vào tin nhắn khẩn cấp.');
+        Alert.alert(t('map.locationPermissionDeniedTitle'), t('map.locationPermissionDeniedMsg'));
         setSending(false);
         return;
       }
 
-      let location = await LocationExpo.getCurrentPositionAsync({});
+      let location = await LocationExpo.getCurrentPositionAsync({
+        accuracy: LocationExpo.Accuracy.High,
+      });
       const coords = `${location.coords.latitude}, ${location.coords.longitude}`;
       const googleMapsLink = `https://maps.google.com/?q=${coords}`;
       
-      const messageBody = templateText.replace('{location}', googleMapsLink);
+      const messageBody = `[SOS KHẨN CẤP] Mình đang cần hỗ trợ khẩn cấp tại ĐH Vinh! Vị trí hiện tại của mình: ${googleMapsLink}`;
       
-      const smsUrl = `sms:?body=${encodeURIComponent(messageBody)}`;
+      const targetPhone = contact.phone.replace(/[^0-9+]/g, '');
+      const smsUrl = Platform.OS === 'ios'
+        ? `sms:${targetPhone}&body=${encodeURIComponent(messageBody)}`
+        : `sms:${targetPhone}?body=${encodeURIComponent(messageBody)}`;
+
       Linking.openURL(smsUrl);
     } catch (error) {
-      Alert.alert('Lỗi', 'Không thể lấy vị trí hiện tại.');
+      Alert.alert(t('common.error'), 'Không thể lấy vị trí hiện tại.');
     } finally {
       setSending(false);
     }
   };
+
+  const displayContacts: EmergencyContactItem[] = [
+    ...(contact
+      ? [
+          {
+            id: 'personal-sos',
+            name: contact.name,
+            phone_number: contact.phone,
+            description: t('emergency.personalBadge'),
+            category: 'PERSONAL',
+            isPersonal: true,
+          },
+        ]
+      : []),
+    ...contacts,
+  ];
 
   if (loading) {
     return (
@@ -86,65 +147,109 @@ export default function EmergencyScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Khẩn cấp & SOS</Text>
-        <Text style={styles.subtitle}>Bấm vào mẫu để gửi tin nhắn kèm vị trí hiện tại của bạn.</Text>
-      </View>
-
-      <View style={styles.sosContainer}>
-        <TouchableOpacity 
-          style={styles.sosButton}
-          onPress={() => sendSOSMessage('Cứu tôi với! Tôi đang gặp nguy hiểm. Vị trí của tôi: {location}')}
-          disabled={sending}
-        >
-          {sending ? (
-            <ActivityIndicator color={colors.white} size="large" />
-          ) : (
-            <>
-              <Ionicons name="alert" size={48} color={colors.white} />
-              <Text style={styles.sosText}>SOS KHẨN CẤP</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      <Text style={styles.sectionTitle}>Các mẫu tin nhắn khác</Text>
-      
-      <View style={styles.grid}>
-        {templates.map((tpl) => (
-          <TouchableOpacity 
-            key={tpl.id} 
-            style={styles.card}
-            onPress={() => sendSOSMessage(tpl.message_template)}
-          >
-            <View style={styles.cardIcon}>
-              <Ionicons 
-                name={getIconForCategory(tpl.category)} 
-                size={24} 
-                color={colors.primary} 
-              />
-            </View>
-            <Text style={styles.cardCategory}>{tpl.category}</Text>
-            <Text style={styles.cardTemplate} numberOfLines={2}>
-              {tpl.message_template}
+    <>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <View style={{ flex: 1, marginRight: spacing.sm }}>
+            <Text style={styles.title}>{t('emergency.title')}</Text>
+            <Text style={styles.subtitle}>
+              {contact ? t('emergency.subtitle') : t('emergency.setupPersonalDesc')}
             </Text>
+          </View>
+          <LanguageSwitcher />
+        </View>
+
+        {/* Dynamic Hero SOS Button */}
+        <View style={styles.sosContainer}>
+          <TouchableOpacity 
+            style={[styles.sosButton, !contact && styles.sosButtonGreen]}
+            onPress={contact ? sendSOSMessage : () => setPersonalModalVisible(true)}
+            disabled={sending}
+            activeOpacity={0.85}
+          >
+            {sending ? (
+              <ActivityIndicator color={colors.white} size="large" />
+            ) : contact ? (
+              <>
+                <Ionicons name="location" size={42} color={colors.white} />
+                <Text style={styles.sosText} numberOfLines={2}>
+                  {t('emergency.sendGpsTo', { name: contact.name })}
+                </Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="person-add" size={42} color={colors.white} />
+                <Text style={styles.sosText} numberOfLines={2}>
+                  {t('emergency.setupPersonalContact')}
+                </Text>
+              </>
+            )}
           </TouchableOpacity>
-        ))}
-      </View>
-    </ScrollView>
+
+          {contact && (
+            <TouchableOpacity 
+              style={styles.changeContactBtn} 
+              onPress={() => setPersonalModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="create-outline" size={15} color={colors.primary} />
+              <Text style={styles.changeContactText}>{t('emergency.editPersonal')}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <Text style={styles.sectionTitle}>{t('emergency.title')}</Text>
+        
+        <View style={styles.list}>
+          {displayContacts.length === 0 ? (
+            <Text style={{ textAlign: 'center', color: colors.textSecondary, padding: spacing.lg }}>
+              {t('common.emptyData')}
+            </Text>
+          ) : (
+            displayContacts.map((item) => {
+              const styleMeta = getCategoryStyle(item.category, item.name, item.isPersonal);
+              return (
+                <TouchableOpacity 
+                  key={item.id} 
+                  style={[styles.card, item.isPersonal && styles.cardPersonal]}
+                  onPress={() => handleCall(item.phone_number)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.iconBox, { backgroundColor: styleMeta.bg }]}>
+                    <Ionicons name={styleMeta.icon as any} size={22} color={styleMeta.color} />
+                  </View>
+                  <View style={styles.cardInfo}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={styles.cardTitle}>{item.name}</Text>
+                      {item.isPersonal && (
+                        <View style={styles.personalBadge}>
+                          <Text style={styles.personalBadgeText}>Cá nhân</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.cardSubtitle}>
+                      {item.description || item.ward || 'Liên hệ hỗ trợ 24/7'}
+                    </Text>
+                  </View>
+                  <View style={[styles.callBadge, item.isPersonal && { backgroundColor: '#10B981' }]}>
+                    <Ionicons name="call" size={14} color={colors.white} />
+                    <Text style={styles.callBadgeText}>{item.phone_number}</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })
+          )}
+        </View>
+      </ScrollView>
+
+      <PersonalContactModal
+        visible={personalModalVisible}
+        onClose={() => setPersonalModalVisible(false)}
+      />
+    </>
   );
 }
 
-function getIconForCategory(category: string): keyof typeof Ionicons.glyphMap {
-  const cat = category.toUpperCase();
-  if (cat.includes('SOS')) return 'alert-circle';
-  if (cat.includes('MEDICAL')) return 'medkit';
-  if (cat.includes('POLICE')) return 'shield-checkmark';
-  if (cat.includes('FIRE')) return 'flame';
-  if (cat.includes('LOST')) return 'search';
-  return 'document-text';
-}
 
 const styles = StyleSheet.create({
   container: {
@@ -162,6 +267,9 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: spacing.xl,
   },
   title: {
@@ -190,11 +298,32 @@ const styles = StyleSheet.create({
     elevation: 10,
     shadowColor: colors.danger,
   },
+  sosButtonGreen: {
+    backgroundColor: '#10B981',
+    shadowColor: '#10B981',
+  },
+  changeContactBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radius.round,
+    marginTop: spacing.md,
+    gap: 4,
+  },
+  changeContactText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primary,
+  },
   sosText: {
     color: colors.white,
     fontWeight: '800',
-    fontSize: 18,
+    fontSize: 15,
     marginTop: 8,
+    textAlign: 'center',
+    paddingHorizontal: spacing.md,
   },
   sectionTitle: {
     fontSize: typography.size.lg,
@@ -202,34 +331,68 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     marginBottom: spacing.md,
   },
-  grid: {
-    gap: spacing.md,
+  list: {
+    gap: spacing.sm,
   },
   card: {
     backgroundColor: colors.surface,
-    padding: spacing.lg,
+    padding: spacing.md,
     borderRadius: radius.lg,
-    flexDirection: 'column',
+    flexDirection: 'row',
+    alignItems: 'center',
     ...shadows.small,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  cardIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primaryLight,
+  cardPersonal: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
+  },
+  personalBadge: {
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: radius.xs,
+  },
+  personalBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#059669',
+  },
+
+  iconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    marginRight: spacing.md,
   },
-  cardCategory: {
+  cardInfo: {
+    flex: 1,
+  },
+  cardTitle: {
     fontSize: typography.size.md,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.textPrimary,
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  cardTemplate: {
-    fontSize: typography.size.sm,
+  cardSubtitle: {
+    fontSize: typography.size.xs,
     color: colors.textSecondary,
-    fontStyle: 'italic',
-  }
+  },
+  callBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.success,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: radius.round,
+    gap: 4,
+  },
+  callBadgeText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '700',
+  },
 });

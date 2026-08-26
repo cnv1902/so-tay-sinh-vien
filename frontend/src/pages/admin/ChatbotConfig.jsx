@@ -3,9 +3,9 @@ import { Tabs, Card, Typography, Select, Input, Button, message, Space, Spin, Ro
 import { getChatbotApiUrl } from '../../config/api';
 import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 
-const API_BASE = getChatbotApiUrl();
 const { Title, Text } = Typography;
 const { Option } = Select;
+
 
 const PROVIDERS_LIST = [
   { id: 'gemini', label: 'Google Gemini', color: '#4285f4', needsEndpoint: false },
@@ -44,7 +44,7 @@ function SlotsTab() {
 
   const loadSlots = async () => {
     try {
-      const slotsRes = await fetch(`${API_BASE}/admin/slots`);
+      const slotsRes = await fetch(`${getChatbotApiUrl()}/admin/slots`);
       if (slotsRes.ok) {
         const data = await slotsRes.json();
         const ocrSlot = data.find(s => s.slot === 'ocr');
@@ -85,7 +85,7 @@ function SlotsTab() {
     const provider = forceProvider || selectedProviders[slotType];
     setModelsLoading(prev => ({ ...prev, [slotType]: true }));
     try {
-      const res = await fetch(`${API_BASE}/admin/models/${provider}`);
+      const res = await fetch(`${getChatbotApiUrl()}/admin/models/${provider}`);
       if (res.ok) {
         const data = await res.json();
         if (data.models && data.models.length > 0) {
@@ -119,7 +119,7 @@ function SlotsTab() {
 
     setSlotsLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/admin/slots`, {
+      const res = await fetch(`${getChatbotApiUrl()}/admin/slots`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -128,6 +128,7 @@ function SlotsTab() {
           model_name: model
         })
       });
+
 
       if (res.ok) {
         message.success(`Đã lưu phân công slot "${slotType.toUpperCase()}" thành công.`);
@@ -284,7 +285,7 @@ function ProvidersTab() {
 
   const loadProviders = async () => {
     try {
-      const provRes = await fetch(`${API_BASE}/admin/providers`);
+      const provRes = await fetch(`${getChatbotApiUrl()}/admin/providers`);
       if (provRes.ok) {
         const data = await provRes.json();
         setProvidersData(data);
@@ -315,7 +316,7 @@ function ProvidersTab() {
 
     setProvLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/admin/providers`, {
+      const res = await fetch(`${getChatbotApiUrl()}/admin/providers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -325,6 +326,7 @@ function ProvidersTab() {
           is_active: true
         })
       });
+
 
       if (res.ok) {
         message.success(`Đã cập nhật cấu hình cho ${providerId.toUpperCase()}.`);

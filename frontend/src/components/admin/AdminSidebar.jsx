@@ -25,11 +25,11 @@ export default function AdminSidebar() {
     { key: '/admin/emergency', icon: <PhoneCall size={18} />, label: 'Liên hệ Khẩn cấp' },
     { key: '/admin/calendar', icon: <Calendar size={18} />, label: 'Lịch & Sự kiện' },
     { key: '/admin/news', icon: <Newspaper size={18} />, label: 'Tin tức & Bài viết' },
-    { key: '/admin/locations', icon: <MapPin size={18} />, label: 'Quản lý Địa điểm' },
     { key: '/admin/departments', icon: <Building size={18} />, label: 'Tòa nhà & Phòng ban' },
     { key: '/admin/vinhuni-map', icon: <MapIcon size={18} />, label: 'Bản đồ VinhUni' },
     { key: '/admin/chatbot', icon: <Activity size={18} />, label: 'Cấu hình Chatbot' },
   ];
+
 
   return (
     <Sider 

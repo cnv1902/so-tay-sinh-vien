@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google';
 
 import { getMainApiUrl } from '../../config/api';
-const API_BASE = getMainApiUrl();
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'your_google_client_id_here';
 
 function AdminLoginForm() {
@@ -40,7 +39,7 @@ function AdminLoginForm() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE}/api/auth/login`, {
+      const response = await fetch(`${getMainApiUrl()}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
@@ -72,7 +71,7 @@ function AdminLoginForm() {
     setSuccessMsg('');
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/api/auth/send-otp`, {
+      const response = await fetch(`${getMainApiUrl()}/api/auth/send-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: username }),
@@ -107,7 +106,7 @@ function AdminLoginForm() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE}/api/auth/verify-first-login`, {
+      const response = await fetch(`${getMainApiUrl()}/api/auth/verify-first-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -150,11 +149,12 @@ function AdminLoginForm() {
         }
 
         // Gửi email lên backend
-        const authRes = await fetch(`${API_BASE}/api/auth/google-login`, {
+        const authRes = await fetch(`${getMainApiUrl()}/api/auth/google-login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: userInfo.email, google_token: tokenResponse.access_token }),
         });
+
         
         const authData = await authRes.json();
         

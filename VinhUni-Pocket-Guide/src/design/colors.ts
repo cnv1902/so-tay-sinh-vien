@@ -1,26 +1,57 @@
+/**
+ * VinhUni Pocket Guide — Design Token: Colors
+ *
+ * Bảng màu lấy cảm hứng từ bản sắc Đại học Vinh:
+ * - Primary: Indigo Navy (#1E3A5F) — tông học thuật, trang trọng, như màu đồng phục và logo nhiều ĐH uy tín
+ * - Accent: Amber Gold (#C8943A)  — màu vàng đồng ánh kim, tạo điểm nhấn sang trọng, tương phản tốt
+ * - Surface: Trắng ngà ấm (#FAFBFC) — không lạnh, dễ đọc lâu
+ * - Tránh: Sky-blue neon, đỏ tươi đơn sắc, cream + serif
+ */
 export const colors = {
-  primary: '#0ea5e9', // Sky blue modern
-  primaryDark: '#0284c7',
-  primaryLight: '#e0f2fe',
+  // Primary — Indigo Navy (màu chủ đạo học thuật)
+  primary: "#1E3A5F",
+  primaryDark: "#132840",
+  primaryLight: "#EBF0F7",
+  primaryMid: "#2E5088",
 
-  background: '#f8fafc',
-  surface: '#ffffff',
-  surfaceBlur: 'rgba(255, 255, 255, 0.75)',
+  // Accent — Amber Gold (điểm nhấn sang trọng)
+  accent: "#C8943A",
+  accentLight: "#FDF4E7",
+  accentDark: "#A07628",
 
-  textPrimary: '#0f172a',
-  textSecondary: '#64748b',
-  textTertiary: '#94a3b8',
+  // Surfaces
+  background: "#F4F6F9",
+  surface: "#FFFFFF",
+  surfaceElevated: "#FAFBFC",
+  surfaceBlur: "rgba(255, 255, 255, 0.82)",
 
-  border: 'rgba(226, 232, 240, 0.6)',
-  divider: '#f1f5f9',
+  // Text
+  textPrimary: "#0D1B2A",
+  textSecondary: "#4A6080",
+  textTertiary: "#8FA3BF",
+  textOnPrimary: "#FFFFFF",
+  textOnAccent: "#FFFFFF",
 
-  success: '#10b981',
-  warning: '#f59e0b',
-  danger: '#ef4444',
+  // Semantic
+  success: "#1A7A4A",
+  successLight: "#E6F5ED",
+  warning: "#C8943A",
+  warningLight: "#FDF4E7",
+  danger: "#C0392B",
+  dangerLight: "#FDECEA",
+  error: "#C0392B",
 
-  overlay: 'rgba(15, 23, 42, 0.4)',
+  // Borders & Dividers
+  border: "rgba(30, 58, 95, 0.10)",
+  divider: "#ECF0F5",
+  borderStrong: "rgba(30, 58, 95, 0.18)",
 
-  white: '#ffffff',
-  black: '#000000',
-  transparent: 'transparent',
+  // Overlay
+  overlay: "rgba(13, 27, 42, 0.52)",
+  overlayLight: "rgba(13, 27, 42, 0.25)",
+
+  // Utility
+  white: "#FFFFFF",
+  black: "#000000",
+  transparent: "transparent",
 } as const;

@@ -12,10 +12,13 @@ Layer 2 — Chunking:
 Layer 3 — Context Injection:
   - Breadcrumb: [Tài liệu: X | Năm phát hành: Y | Danh mục: Z | Mục: W]
 """
+import asyncio
 import logging
 import re
 from pathlib import Path
 from typing import Optional
+
+
 
 from markitdown import MarkItDown
 from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter

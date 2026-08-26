@@ -31,7 +31,9 @@ import logging
 import json
 import os
 import re
+import asyncio
 from typing import List, Optional
+import httpx
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -47,6 +49,18 @@ from db.connection import get_db
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Campus Map - Buildings & Departments"])
+
+async def _notify_chatbot_sync(dept_id: Optional[int] = None):
+    """Gửi tín hiệu đồng bộ vector phòng ban sang api-chatbot trong background."""
+    chatbot_url = os.getenv("CHATBOT_API_URL", "http://localhost:8001")
+    endpoint = f"{chatbot_url}/api/sync/departments" if dept_id is None else f"{chatbot_url}/api/sync/departments/{dept_id}"
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            await client.post(endpoint)
+            logger.info("[SyncHook] Đã gửi tín hiệu đồng bộ vector phòng ban sang chatbot: %s", endpoint)
+    except Exception as e:
+        logger.warning("[SyncHook] Không thể kết nối api-chatbot để đồng bộ: %s", str(e))
+
 
 
 # ─────────────────────────────────────────────
@@ -168,6 +182,7 @@ async def list_departments(
     building_id: Optional[int] = Query(None, description="Lọc theo ID tòa nhà"),
     search: Optional[str] = Query(None, description="Tìm kiếm theo tên"),
     is_active: Optional[bool] = Query(None, description="Lọc theo trạng thái hiển thị"),
+    lang: Optional[str] = Query("vi", description="Ngôn ngữ: vi, en, lo"),
     db: AsyncSession = Depends(get_db),
 ):
     from sqlalchemy.orm import selectinload
@@ -188,11 +203,30 @@ async def list_departments(
         query = query.where(Department.is_active == is_active)
 
     result = await db.execute(query)
-    return result.scalars().all()
+    depts = result.scalars().all()
+
+    if lang in ('en', 'lo'):
+        for d in depts:
+            if lang == 'en':
+                if d.name_en:
+                    d.name = d.name_en
+                if d.function_description_en:
+                    d.function_description = d.function_description_en
+                if d.building and d.building.name_en:
+                    d.building.name = d.building.name_en
+            elif lang == 'lo':
+                if d.name_lao:
+                    d.name = d.name_lao
+                if d.function_description_lao:
+                    d.function_description = d.function_description_lao
+                if d.building and d.building.name_lao:
+                    d.building.name = d.building.name_lao
+
+    return depts
 
 
 @router.get("/departments/{dept_id}", response_model=DepartmentResponse, summary="Chi tiết phòng ban")
-async def get_department(dept_id: int, db: AsyncSession = Depends(get_db)):
+async def get_department(dept_id: int, lang: Optional[str] = Query("vi"), db: AsyncSession = Depends(get_db)):
     from sqlalchemy.orm import selectinload
     result = await db.execute(
         select(Department)
@@ -202,7 +236,24 @@ async def get_department(dept_id: int, db: AsyncSession = Depends(get_db)):
     obj = result.scalar_one_or_none()
     if not obj:
         raise HTTPException(status_code=404, detail="Phòng ban không tồn tại")
+    
+    if lang == 'en':
+        if obj.name_en:
+            obj.name = obj.name_en
+        if obj.function_description_en:
+            obj.function_description = obj.function_description_en
+        if obj.building and obj.building.name_en:
+            obj.building.name = obj.building.name_en
+    elif lang == 'lo':
+        if obj.name_lao:
+            obj.name = obj.name_lao
+        if obj.function_description_lao:
+            obj.function_description = obj.function_description_lao
+        if obj.building and obj.building.name_lao:
+            obj.building.name = obj.building.name_lao
+
     return obj
+
 
 
 @router.post("/departments", response_model=DepartmentResponse, status_code=status.HTTP_201_CREATED, summary="Tạo phòng ban mới")
@@ -222,6 +273,7 @@ async def create_department(item_in: DepartmentCreate, db: AsyncSession = Depend
     )
     obj = result.scalar_one()
     logger.info("[Department] Tạo mới: %s (tầng %s)", obj.name, obj.floor)
+    asyncio.create_task(_notify_chatbot_sync(obj.id))
     return obj
 
 
@@ -244,6 +296,7 @@ async def update_department(dept_id: int, item_in: DepartmentUpdate, db: AsyncSe
         select(Department).options(selectinload(Department.building)).where(Department.id == dept_id)
     )
     obj = result.scalar_one()
+    asyncio.create_task(_notify_chatbot_sync(obj.id))
     return obj
 
 
@@ -254,7 +307,9 @@ async def delete_department(dept_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Phòng ban không tồn tại")
     await db.delete(obj)
     await db.commit()
+    asyncio.create_task(_notify_chatbot_sync(dept_id))
     return None
+
 
 
 # ─────────────────────────────────────────────
@@ -266,7 +321,7 @@ async def delete_department(dept_id: int, db: AsyncSession = Depends(get_db)):
     summary="[Public] Toàn bộ tòa nhà kèm phòng ban cho Mobile Map",
     response_model=List[BuildingWithDepartmentsResponse],
 )
-async def map_get_buildings(db: AsyncSession = Depends(get_db)):
+async def map_get_buildings(lang: Optional[str] = Query("vi"), db: AsyncSession = Depends(get_db)):
     """
     Endpoint công khai cho Mobile App gọi khi khởi động bản đồ.
     Trả về toàn bộ danh sách tòa nhà và phòng ban con kèm tọa độ.
@@ -277,7 +332,30 @@ async def map_get_buildings(db: AsyncSession = Depends(get_db)):
         .options(selectinload(Building.departments))
         .order_by(Building.name)
     )
-    return result.scalars().all()
+    buildings = result.scalars().all()
+
+    if lang in ('en', 'lo'):
+        for b in buildings:
+            if lang == 'en':
+                if b.name_en:
+                    b.name = b.name_en
+                if b.description:
+                    pass
+                for d in b.departments:
+                    if d.name_en:
+                        d.name = d.name_en
+                    if d.function_description_en:
+                        d.function_description = d.function_description_en
+            elif lang == 'lo':
+                if b.name_lao:
+                    b.name = b.name_lao
+                for d in b.departments:
+                    if d.name_lao:
+                        d.name = d.name_lao
+                    if d.function_description_lao:
+                        d.function_description = d.function_description_lao
+
+    return buildings
 
 
 @router.get(
@@ -287,6 +365,7 @@ async def map_get_buildings(db: AsyncSession = Depends(get_db)):
 )
 async def map_get_department_markers(
     is_building: Optional[bool] = Query(None, description="True=POI tòa nhà độc lập, False=phòng ban trong tòa nhà"),
+    lang: Optional[str] = Query("vi"),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -304,7 +383,27 @@ async def map_get_department_markers(
     if is_building is not None:
         query = query.where(Department.is_building == is_building)
     result = await db.execute(query)
-    return result.scalars().all()
+    depts = result.scalars().all()
+
+    if lang in ('en', 'lo'):
+        for d in depts:
+            if lang == 'en':
+                if d.name_en:
+                    d.name = d.name_en
+                if d.function_description_en:
+                    d.function_description = d.function_description_en
+                if d.building and d.building.name_en:
+                    d.building.name = d.building.name_en
+            elif lang == 'lo':
+                if d.name_lao:
+                    d.name = d.name_lao
+                if d.function_description_lao:
+                    d.function_description = d.function_description_lao
+                if d.building and d.building.name_lao:
+                    d.building.name = d.building.name_lao
+
+    return depts
+
 
 
 # ─────────────────────────────────────────────
@@ -470,8 +569,8 @@ async def seed_from_geojson(db: AsyncSession = Depends(get_db)):
             "[Seed] Departments: created=%d, skipped=%d",
             stats["departments_created"], stats["departments_skipped"]
         )
-
-    return {
+        asyncio.create_task(_notify_chatbot_sync())
+        return {
         "success": True,
         "message": "Import từ GeoJSON hoàn tất",
         "stats": stats,

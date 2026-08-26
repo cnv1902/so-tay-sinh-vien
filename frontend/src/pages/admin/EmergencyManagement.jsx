@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Tabs, Table, Button, Modal, Form, Input, InputNumber, Popconfirm, message, Space, Typography, Select, Tag } from 'antd';
+import { Table, Button, Modal, Form, Input, InputNumber, Popconfirm, message, Space, Typography, Select, Tag } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { getMainApiUrl } from '../../config/api';
 
@@ -7,27 +7,6 @@ const { Title } = Typography;
 const { TextArea } = Input;
 
 export default function EmergencyManagement() {
-  return (
-    <div>
-      <Title level={4} style={{ margin: 0, marginBottom: '24px', color: 'var(--text-main)' }}>
-        Quản lý Liên hệ Khẩn cấp & Mẫu tin nhắn
-      </Title>
-      
-      <Tabs 
-        defaultActiveKey="contacts" 
-        items={[
-          { key: 'contacts', label: 'Danh bạ SOS', children: <ContactsTab /> },
-          { key: 'templates', label: 'Mẫu tin nhắn', children: <TemplatesTab /> }
-        ]}
-      />
-    </div>
-  );
-}
-
-// ==========================================
-// TAB 1: DANH BẠ SOS
-// ==========================================
-function ContactsTab() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -37,6 +16,7 @@ function ContactsTab() {
   const [filterWard, setFilterWard] = useState(null);
   const [extractingMap, setExtractingMap] = useState(false);
   const [mapUrl, setMapUrl] = useState('');
+
   
   const apiUrl = `${getMainApiUrl()}/api/admin/emergency/contacts`;
 
@@ -168,7 +148,12 @@ function ContactsTab() {
 
   return (
     <div>
+      <Title level={4} style={{ margin: 0, marginBottom: '24px', color: 'var(--text-main)' }}>
+        Quản lý Liên hệ Khẩn cấp
+      </Title>
+
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+
         <Space>
           <Select 
             placeholder="Lọc theo Danh mục" 
@@ -266,112 +251,3 @@ function ContactsTab() {
   );
 }
 
-// ==========================================
-// TAB 2: MẪU TIN NHẮN
-// ==========================================
-function TemplatesTab() {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [editingRecord, setEditingRecord] = useState(null);
-  const [form] = Form.useForm();
-  
-  const apiUrl = `${getMainApiUrl()}/api/admin/emergency/templates`;
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(apiUrl);
-      if (!res.ok) throw new Error('Lỗi tải dữ liệu mẫu tin');
-      const result = await res.json();
-      setData(result);
-    } catch (error) {
-      message.error(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { fetchData(); }, []);
-
-  const openModal = (record = null) => {
-    setEditingRecord(record);
-    if (record) form.setFieldsValue(record);
-    else form.resetFields();
-    setIsModalVisible(true);
-  };
-
-  const handleCancel = () => {
-    setIsModalVisible(false);
-    form.resetFields();
-  };
-
-  const handleSubmit = async (values) => {
-    try {
-      const url = editingRecord ? `${apiUrl}/${editingRecord.id}` : apiUrl;
-      const method = editingRecord ? 'PUT' : 'POST';
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values)
-      });
-      if (!res.ok) throw new Error('Thao tác thất bại');
-      
-      message.success(editingRecord ? 'Cập nhật mẫu tin thành công' : 'Thêm mẫu tin thành công');
-      setIsModalVisible(false);
-      fetchData();
-    } catch (error) {
-      message.error(error.message);
-    }
-  };
-
-  const handleDelete = async (id) => {
-    try {
-      const res = await fetch(`${apiUrl}/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Xóa thất bại');
-      message.success('Đã xóa mẫu tin');
-      fetchData();
-    } catch (error) {
-      message.error(error.message);
-    }
-  };
-
-  const columns = [
-    { title: 'Phân loại (Category)', dataIndex: 'category', key: 'category', render: t => <strong>{t}</strong>, width: '25%' },
-    { title: 'Mẫu tin nhắn', dataIndex: 'message_template', key: 'message_template' },
-    {
-      title: 'Thao tác',
-      key: 'action',
-      width: '15%',
-      render: (_, record) => (
-        <Space size="middle">
-          <Button type="primary" ghost icon={<EditOutlined />} onClick={() => openModal(record)} style={{ borderRadius: 0 }} />
-          <Popconfirm title="Xóa mẫu tin này?" onConfirm={() => handleDelete(record.id)} okText="Xóa" cancelText="Hủy" okButtonProps={{ danger: true, style: { borderRadius: 0 } }} cancelButtonProps={{ style: { borderRadius: 0 } }}>
-            <Button danger icon={<DeleteOutlined />} style={{ borderRadius: 0 }} />
-          </Popconfirm>
-        </Space>
-      ),
-    },
-  ];
-
-  return (
-    <div>
-      <div style={{ marginBottom: '16px', textAlign: 'right' }}>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()} style={{ borderRadius: 0, backgroundColor: 'var(--primary-blue)' }}>
-          Thêm mẫu tin
-        </Button>
-      </div>
-      <Table columns={columns} dataSource={data} rowKey="id" loading={loading} bordered pagination={{ pageSize: 10 }} style={{ borderRadius: 0 }} />
-      <Modal title={editingRecord ? 'Cập nhật mẫu tin' : 'Thêm mẫu tin khẩn cấp'} open={isModalVisible} onCancel={handleCancel} onOk={() => form.submit()} okText="Lưu" cancelText="Hủy" okButtonProps={{ style: { borderRadius: 0, backgroundColor: 'var(--primary-blue)' } }} cancelButtonProps={{ style: { borderRadius: 0 } }} styles={{ content: { borderRadius: 0 } }}>
-        <Form form={form} layout="vertical" onFinish={handleSubmit}>
-          <Form.Item name="category" label="Phân loại (VD: Hỏa hoạn, Y tế)" rules={[{ required: true }]}>
-            <Input style={{ borderRadius: 0 }} />
-          </Form.Item>
-          <Form.Item name="message_template" label="Mẫu tin nhắn" rules={[{ required: true }]}>
-            <TextArea rows={4} style={{ borderRadius: 0 }} />
-          </Form.Item>
-        </Form>
-      </Modal>
-    </div>
-  );
-}
