@@ -25,6 +25,13 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from core.embedder import embed
 from core.vectordb import search_qa_cache
 
+from deep_translator import GoogleTranslator
+try:
+    from langdetect import detect
+except ImportError:
+    # Fallback in case langdetect is missing in environment
+    detect = None
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["Chat"])
@@ -87,16 +94,31 @@ async def chat_endpoint(req: ChatRequest, request: Request, background_tasks: Ba
         req.message[:80] + ("..." if len(req.message) > 80 else ""),
     )
 
+    # ── [1.4] Language Detection & Query Translation ──
+    original_message = req.message
+    detected_lang = "vi"
+    search_query = req.message
+
+    if detect:
+        try:
+            detected_lang = detect(req.message)
+            if detected_lang not in ['vi']:
+                logger.info(f"[Chat/{request_id}] Phát hiện ngôn ngữ: {detected_lang}. Đang dịch sang tiếng Việt để truy vấn...")
+                search_query = GoogleTranslator(source='auto', target='vi').translate(req.message)
+                logger.info(f"[Chat/{request_id}] Câu hỏi sau khi dịch: {search_query}")
+        except Exception as e:
+            logger.warning(f"[Chat/{request_id}] Lỗi phát hiện/dịch ngôn ngữ: {e}")
+
     # ── [1.5] Semantic Cache Check ──
     try:
-        query_vector = embed(req.message)
+        query_vector = embed(search_query)
         cached_qa = search_qa_cache(query_vector, score_threshold=0.85)
         
         if cached_qa:
             logger.info("[Chat/%s] ⚡ Phản hồi tức thì từ Semantic Cache.", request_id)
             
             chat_history = get_history(req.session_id)
-            chat_history.append({"role": "user", "content": req.message})
+            chat_history.append({"role": "user", "content": original_message})
             chat_history.append({"role": "assistant", "content": cached_qa.get("answer", "")})
             
             if len(chat_history) > 6:
@@ -121,7 +143,13 @@ async def chat_endpoint(req: ChatRequest, request: Request, background_tasks: Ba
     try:
         # AgentExecutor ainvoke sử dụng main loop, nhưng có thể sinh ra I/O.
         # Chúng ta dùng await trực tiếp vì LangChain model async hỗ trợ non-blocking.
-        bot_answer, sources = await run_agent(req.message, chat_history, req.session_id)
+        bot_answer, sources = await run_agent(
+            user_message=search_query, 
+            chat_history=chat_history, 
+            session_id=req.session_id,
+            original_message=original_message,
+            detected_language=detected_lang
+        )
     except Exception as e:
         logger.error(
             "[Chat/%s] Agent pipeline THẤT BẠI: %s",
@@ -140,7 +168,7 @@ async def chat_endpoint(req: ChatRequest, request: Request, background_tasks: Ba
         bot_answer = "Xin lỗi, hệ thống tạm thời không thể xử lý câu hỏi này."
 
     # ── [4] Cập nhật lịch sử ──
-    chat_history.append({"role": "user", "content": req.message})
+    chat_history.append({"role": "user", "content": original_message})
     chat_history.append({"role": "assistant", "content": bot_answer})
     
     # ── [4.1] Gọi Background Task tóm tắt lịch sử ──
@@ -152,7 +180,7 @@ async def chat_endpoint(req: ChatRequest, request: Request, background_tasks: Ba
             logger.warning("[Chat/%s] Lỗi lưu Redis.", request_id)
 
     # ── [4.2] Lưu Q&A vào bảng staging ──
-    background_tasks.add_task(save_qa_staging_task, req.message, bot_answer)
+    background_tasks.add_task(save_qa_staging_task, original_message, bot_answer)
 
     # ── [5] Trả response ──
     elapsed_ms = round((time.perf_counter() - start_time) * 1000)

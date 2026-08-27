@@ -101,10 +101,16 @@ export default function DepartmentsManagement() {
         : `${getMainApiUrl()}/api/admin/departments`;
       const method = editingDept ? 'PUT' : 'POST';
 
+      // Chuẩn hóa payload: chuyển undefined sang null để backend nhận diện xóa liên kết
+      const payload = {
+        ...values,
+        building_id: values.building_id === undefined ? null : values.building_id
+      };
+
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values)
+        body: JSON.stringify(payload)
       });
 
       if (!res.ok) {

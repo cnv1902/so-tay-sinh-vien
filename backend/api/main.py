@@ -48,13 +48,16 @@ async def lifespan(app: FastAPI):
     await init_db()
     await seed_admin_account()
     
-    # Khởi tạo đồ thị cho chức năng tìm đường
+    # Khởi tạo đồ thị cho chức năng tìm đường (nếu có file geojson)
     from core.map_engine import map_engine
     import os
     geojson_path = os.path.join(os.path.dirname(__file__), "..", "static", "data", "vinhuni_paths.geojson")
     walkable_path = os.path.join(os.path.dirname(__file__), "..", "static", "data", "vinhuni_walkable_areas.geojson")
     buildings_path = os.path.join(os.path.dirname(__file__), "..", "static", "data", "vinhuni_buildings.geojson")
-    map_engine.load_graph(geojson_path, walkable_path, buildings_path)
+    if os.path.exists(geojson_path):
+        map_engine.load_graph(geojson_path, walkable_path, buildings_path)
+    else:
+        print(f"[Map] Không tìm thấy file {geojson_path}, bỏ qua tải đồ thị bản đồ.")
     
     yield
 
@@ -65,8 +68,14 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Đảm bảo thư mục static tồn tại trước khi mount
+_STATIC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static"))
+os.makedirs(_STATIC_DIR, exist_ok=True)
+os.makedirs(os.path.join(_STATIC_DIR, "data"), exist_ok=True)
+os.makedirs(os.path.join(_STATIC_DIR, "uploads"), exist_ok=True)
+
 # Phân phối file tĩnh (Bản đồ, ảnh...)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
 
 # Cấu hình CORS
 def _parse_cors_origins() -> list[str]:

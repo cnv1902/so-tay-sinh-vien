@@ -45,7 +45,7 @@ HƯỚNG DẪN DÙNG CÔNG CỤ (TOOL CALLING):
 7. `get_emergency_templates` — Mẫu tin nhắn khẩn cấp (báo mất đồ, gọi cấp cứu)."""
 
 
-async def run_agent(user_message: str, chat_history: list[dict], session_id: str) -> tuple[str, list[str]]:
+async def run_agent(user_message: str, chat_history: list[dict], session_id: str, original_message: str = None, detected_language: str = "vi") -> tuple[str, list[str]]:
     """
     Thực thi Agent với tool calling và trả về (câu trả lời, danh sách nguồn).
     """
@@ -65,6 +65,9 @@ async def run_agent(user_message: str, chat_history: list[dict], session_id: str
 
     current_year = datetime.datetime.now().year
     dynamic_system_prompt = SYSTEM_PROMPT + f"\nLưu ý thời gian thực: Năm nay là {current_year}."
+    
+    if detected_language != "vi" and original_message:
+        dynamic_system_prompt += f"\n\n[QUAN TRỌNG]: Câu hỏi gốc của người dùng là: '{original_message}' (Ngôn ngữ: {detected_language}). Câu hỏi đã được tự động dịch sang tiếng Việt để bạn tra cứu dữ liệu. BẠN BẮT BUỘC PHẢI TRẢ LỜI NGƯỜI DÙNG BẰNG NGÔN NGỮ GỐC LÀ {detected_language}. Tuyệt đối không trả lời bằng tiếng Việt."
 
     try:
         agent = create_react_agent(llm, tools, prompt=dynamic_system_prompt)

@@ -58,4 +58,4 @@ passlib>=1.7.4
 bcrypt==3.2.2
 PyJWT>=2.8.0
 deep-translator>=1.11.4
-
+langdetect>=1.0.9
