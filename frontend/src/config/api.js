@@ -6,13 +6,13 @@ export const getMainApiUrl = () => {
     if (typeof window !== 'undefined' && window.location) {
         const hostname = window.location.hostname;
         if (hostname.endsWith('covit.site')) {
-            return 'https://api-backend.covit.site';
+            return 'https://backend.covit.site';
         }
         if (hostname === 'localhost' || hostname === '127.0.0.1') {
             return import.meta.env.VITE_MAIN_API_URL || 'http://localhost:8000';
         }
     }
-    return import.meta.env.VITE_MAIN_API_URL || 'https://api-backend.covit.site';
+    return import.meta.env.VITE_MAIN_API_URL || 'https://backend.covit.site';
 };
   
 /**
@@ -22,12 +22,13 @@ export const getChatbotApiUrl = () => {
     if (typeof window !== 'undefined' && window.location) {
         const hostname = window.location.hostname;
         if (hostname.endsWith('covit.site')) {
-            return 'https://api-chatbot.covit.site';
+            return 'https://chatbot.covit.site';
         }
         if (hostname === 'localhost' || hostname === '127.0.0.1') {
             return import.meta.env.VITE_CHATBOT_API_URL || 'http://localhost:8001';
         }
     }
-    return import.meta.env.VITE_CHATBOT_API_URL || 'https://api-chatbot.covit.site';
+    return import.meta.env.VITE_CHATBOT_API_URL || 'https://chatbot.covit.site';
 };
+
 
