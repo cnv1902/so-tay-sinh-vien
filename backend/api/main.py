@@ -95,7 +95,7 @@ async def lifespan(app: FastAPI):
     # Chạy backfill bản dịch trong background
     import asyncio
     asyncio.create_task(auto_backfill_translations())
-    
+
     # Khởi tạo đồ thị cho chức năng tìm đường (nếu có file geojson)
     from core.map_engine import map_engine
     import os

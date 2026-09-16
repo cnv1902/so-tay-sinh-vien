@@ -12,6 +12,7 @@ import ChatbotConfig from "./pages/admin/ChatbotConfig";
 import AdminLogin from "./pages/admin/AdminLogin";
 import DepartmentsManagement from "./pages/admin/DepartmentsManagement";
 import VinhUniMap from "./pages/admin/VinhUniMap";
+import TestChat from "./pages/TestChat";
 
 // Component để bảo vệ các route cần đăng nhập
 const ProtectedRoute = () => {
@@ -48,6 +49,9 @@ function App() {
 
         {/* Public Admin Routes */}
         <Route path="/admin/login" element={<AdminLogin />} />
+        
+        {/* Public Chat Testing Route */}
+        <Route path="/chat" element={<TestChat />} />
 
         {/* Protected Admin Nested Routes */}
         <Route path="/admin" element={<ProtectedRoute />}>

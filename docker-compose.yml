@@ -1,7 +1,12 @@
 # ============================================================
-# CẤU HÌNH DOCKER DATABASE & INFRASTRUCTURE (LOCAL DEV)
-# Chỉ chạy: PostgreSQL (5432), Redis (6379), Qdrant Vector DB (6333)
-# Khởi chạy: docker compose up -d
+# CẤU HÌNH DOCKER TOÀN DIỆN (FULL STACK)
+# - Backend (FastAPI - Hệ thống & Admin API): Port 8000
+# - Chatbot API (FastAPI - RAG & Trợ lý ảo): Port 8001
+# - Qdrant Vector DB: Port 6333 / 6334
+# - Redis Cache & Session: Port 6379
+# - PostgreSQL Database: Port 5432
+#
+# Khởi chạy: docker compose up -d --build
 # ============================================================
 
 services:
@@ -73,7 +78,64 @@ services:
     networks:
       - vinhuni_net
 
-# KHAI BÁO VOLUME DỮ LIỆU (Bảo toàn 100% dữ liệu đã có)
+  # ----------------------------------------------------------
+  # 4. API Chatbot (RAG, Gemini, LangChain, Qdrant) — Port 8001
+  # ----------------------------------------------------------
+  api-chatbot:
+    build:
+      context: ./api-chatbot
+      dockerfile: Dockerfile
+    container_name: chatbot_api
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    env_file:
+      - ./api-chatbot/.env
+    environment:
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql+asyncpg://chatbot_user:${POSTGRES_PASSWORD:-chatbot_pass}@postgres:5432/chatbot_db
+      CORS_ORIGINS: http://localhost:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://localhost:8001,https://backend.covit.site,https://chatbot.covit.site
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    networks:
+      - vinhuni_net
+
+  # ----------------------------------------------------------
+  # 5. Backend (Hệ thống, Bản đồ, Tin tức, Tuyển sinh, Quản trị) — Port 8000
+  # ----------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vinhuni_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://chatbot_user:${POSTGRES_PASSWORD:-chatbot_pass}@postgres:5432/chatbot_db
+      REDIS_URL: redis://redis:6379
+      LLM_SERVICE_URL: http://api-chatbot:8001
+      CORS_ORIGINS: http://localhost:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://localhost:8001,https://backend.covit.site,https://chatbot.covit.site
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api-chatbot:
+        condition: service_started
+    networks:
+      - vinhuni_net
+
+# KHAI BÁO VOLUME DỮ LIỆU
 volumes:
   qdrant_data:
     driver: local
