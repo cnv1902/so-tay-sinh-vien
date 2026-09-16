@@ -1,12 +1,13 @@
 # ============================================================
-# TÁI CẤU TRÚC MICROSERVICES - LOCAL DEVELOPMENT
-# Khởi chạy: docker-compose up -d --build
+# CẤU HÌNH DOCKER DATABASE & INFRASTRUCTURE (LOCAL DEV)
+# Chỉ chạy: PostgreSQL (5432), Redis (6379), Qdrant Vector DB (6333)
+# Khởi chạy: docker compose up -d
 # ============================================================
 
 services:
 
   # ----------------------------------------------------------
-  # 3 KHỐI DATA (Giữ nguyên Volume cũ)
+  # 1. Qdrant Vector Database (Lưu trữ Embedding RAG & Chatbot)
   # ----------------------------------------------------------
   qdrant:
     image: qdrant/qdrant:latest
@@ -22,6 +23,9 @@ services:
     networks:
       - vinhuni_net
 
+  # ----------------------------------------------------------
+  # 2. Redis Cache (Session Chatbot & Cache dữ liệu)
+  # ----------------------------------------------------------
   redis:
     image: redis:7-alpine
     container_name: chatbot_redis
@@ -45,6 +49,9 @@ services:
     networks:
       - vinhuni_net
 
+  # ----------------------------------------------------------
+  # 3. PostgreSQL Database (Dữ liệu Hệ thống: Tin tức, Phòng ban, Cẩm nang...)
+  # ----------------------------------------------------------
   postgres:
     image: postgres:16-alpine
     container_name: chatbot_postgres
@@ -52,7 +59,6 @@ services:
     ports:
       - "5432:5432"
     environment:
-      # Pass DB init variables (vẫn phải giữ ở đây để db khởi tạo lần đầu nếu cần)
       POSTGRES_DB: chatbot_db
       POSTGRES_USER: chatbot_user
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-chatbot_pass}
@@ -67,78 +73,7 @@ services:
     networks:
       - vinhuni_net
 
-  # ----------------------------------------------------------
-  # Microservice 1: Backend Chính (Port 8000)
-  # ----------------------------------------------------------
-  backend:
-    build: 
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: chatbot_backend
-    restart: unless-stopped
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./backend:/app
-    # Đọc cấu hình từ file .env của backend
-    env_file:
-      - ./backend/.env
-    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - vinhuni_net
-
-  # ----------------------------------------------------------
-  # Microservice 2: API Chatbot / LLM (Port 8001)
-  # ----------------------------------------------------------
-  api-chatbot:
-    build: 
-      context: ./api-chatbot
-      dockerfile: Dockerfile
-    container_name: api_chatbot_llm
-    restart: unless-stopped
-    ports:
-      - "8001:8001"
-    volumes:
-      - ./api-chatbot:/app
-    # Đọc cấu hình từ file .env của api-chatbot
-    env_file:
-      - ./api-chatbot/.env
-    command: uvicorn api.main:app --host 0.0.0.0 --port 8001 --reload
-    depends_on:
-      qdrant:
-        condition: service_started
-      redis:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-    networks:
-      - vinhuni_net
-
-  # ----------------------------------------------------------
-  # Microservice 3: Frontend Admin Dashboard (Port 5173)
-  # ----------------------------------------------------------
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: chatbot_frontend
-    restart: unless-stopped
-    ports:
-      - "5173:5173"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    networks:
-      - vinhuni_net
-
-
-
-# KHAI BÁO VOLUME CŨ - QUAN TRỌNG ĐỂ KHÔNG MẤT DATA
+# KHAI BÁO VOLUME DỮ LIỆU (Bảo toàn 100% dữ liệu đã có)
 volumes:
   qdrant_data:
     driver: local

@@ -1,42 +1,49 @@
 import React from 'react';
 import { StyleSheet, View, Animated } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../../design';
+import Svg, { Polygon, Circle } from 'react-native-svg';
 
 interface NavigationPuckProps {
   animatedHeading: Animated.Value;
+  mapBearing?: number;
   isNavigating?: boolean;
 }
 
-export default function NavigationPuck({ animatedHeading, isNavigating = false }: NavigationPuckProps) {
+export default function NavigationPuck({
+  animatedHeading,
+  mapBearing = 0,
+  isNavigating = false,
+}: NavigationPuckProps) {
+  // Trừ đi góc xoay của camera bản đồ để mũi tên luôn chỉ đúng hướng địa lý thực tế
   const rotateStr = animatedHeading.interpolate({
     inputRange: [-360, 360],
-    outputRange: ['-360deg', '360deg'],
+    outputRange: [`${-360 - mapBearing}deg`, `${360 - mapBearing}deg`],
+    extrapolate: 'extend',
   });
 
   return (
     <View style={styles.container}>
-      {/* Outer Pulse/Aura Glow */}
+      {/* Vòng hào quang phát sáng xung quanh */}
       <View style={[styles.halo, isNavigating && styles.haloNavigating]} />
 
-      {/* Rotating Arrow Puck */}
+      {/* Khung xoay chứa Mũi tên định vị la bàn */}
       <Animated.View
         style={[
           styles.puck,
+          isNavigating && styles.puckNavigating,
           {
             transform: [{ rotate: rotateStr }],
           },
         ]}
       >
-        <View style={styles.arrowContainer}>
-          <Ionicons
-            name="navigate"
-            size={isNavigating ? 30 : 24}
-            color={colors.primary}
-            style={styles.arrowIcon}
+        <Svg width={24} height={24} viewBox="0 0 24 24">
+          {/* Mũi tên định hướng thẳng đứng (0 độ = Hướng Bắc) */}
+          <Polygon
+            points="12,2 21,20 12,16 3,20"
+            fill={isNavigating ? "#10B981" : "#2563EB"}
           />
-        </View>
-        <View style={styles.centerDot} />
+          {/* Chấm tròn tâm */}
+          <Circle cx="12" cy="12" r="2.5" fill="#FFFFFF" />
+        </Svg>
       </Animated.View>
     </View>
   );
@@ -54,16 +61,16 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(30, 58, 95, 0.18)',
+    backgroundColor: 'rgba(37, 99, 235, 0.15)',
     borderWidth: 1.5,
-    borderColor: 'rgba(30, 58, 95, 0.3)',
+    borderColor: 'rgba(37, 99, 235, 0.3)',
   },
   haloNavigating: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: 'rgba(59, 130, 246, 0.22)',
-    borderColor: 'rgba(59, 130, 246, 0.4)',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(16, 185, 129, 0.18)',
+    borderColor: 'rgba(16, 185, 129, 0.35)',
   },
   puck: {
     width: 38,
@@ -74,31 +81,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.28,
+    shadowOpacity: 0.25,
     shadowRadius: 5,
     elevation: 6,
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },
-  arrowContainer: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  arrowIcon: {
-    marginTop: -2,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
-  },
-  centerDot: {
-    position: 'absolute',
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#FFFFFF',
-    top: 17,
+  puckNavigating: {
+    borderColor: '#ECFDF5',
   },
 });

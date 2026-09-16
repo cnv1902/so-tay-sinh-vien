@@ -52,12 +52,12 @@ router = APIRouter(tags=["Campus Map - Buildings & Departments"])
 
 async def _notify_chatbot_sync(dept_id: Optional[int] = None):
     """Gửi tín hiệu đồng bộ vector phòng ban sang api-chatbot trong background."""
-    chatbot_url = os.getenv("CHATBOT_API_URL", "http://localhost:8001")
+    chatbot_url = os.getenv("CHATBOT_API_URL") or os.getenv("LLM_SERVICE_URL") or "http://api-chatbot:8001"
     endpoint = f"{chatbot_url}/api/sync/departments" if dept_id is None else f"{chatbot_url}/api/sync/departments/{dept_id}"
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            await client.post(endpoint)
-            logger.info("[SyncHook] Đã gửi tín hiệu đồng bộ vector phòng ban sang chatbot: %s", endpoint)
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(endpoint)
+            logger.info("[SyncHook] Đã gửi tín hiệu đồng bộ vector phòng ban sang chatbot: %s | Status: %s", endpoint, resp.status_code)
     except Exception as e:
         logger.warning("[SyncHook] Không thể kết nối api-chatbot để đồng bộ: %s", str(e))
 
@@ -144,6 +144,7 @@ async def create_building(item_in: BuildingCreate, db: AsyncSession = Depends(ge
     await db.commit()
     await db.refresh(obj)
     logger.info("[Building] Tạo mới: %s (%s)", obj.name, obj.code)
+    asyncio.create_task(_notify_chatbot_sync(None))
     return obj
 
 
@@ -156,6 +157,7 @@ async def update_building(building_id: int, item_in: BuildingUpdate, db: AsyncSe
         setattr(obj, key, value)
     await db.commit()
     await db.refresh(obj)
+    asyncio.create_task(_notify_chatbot_sync(None))
     return obj
 
 
@@ -166,6 +168,7 @@ async def delete_building(building_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Tòa nhà không tồn tại")
     await db.delete(obj)
     await db.commit()
+    asyncio.create_task(_notify_chatbot_sync(None))
     return None
 
 
@@ -411,6 +414,11 @@ async def map_get_department_markers(
 # ─────────────────────────────────────────────
 
 @router.post(
+    "/departments/seed",
+    summary="[Admin] Import dữ liệu tòa nhà & phòng ban từ file GeoJSON có sẵn (alias)",
+    status_code=status.HTTP_200_OK,
+)
+@router.post(
     "/departments/seed-from-geojson",
     summary="[Admin] Import dữ liệu tòa nhà & phòng ban từ file GeoJSON có sẵn",
     status_code=status.HTTP_200_OK,
@@ -570,7 +578,7 @@ async def seed_from_geojson(db: AsyncSession = Depends(get_db)):
             stats["departments_created"], stats["departments_skipped"]
         )
         asyncio.create_task(_notify_chatbot_sync())
-        return {
+    return {
         "success": True,
         "message": "Import từ GeoJSON hoàn tất",
         "stats": stats,

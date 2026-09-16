@@ -1,6 +1,6 @@
 /**
  * i18n/locales/en.ts
- * English dictionary for VinhUni Pocket Guide mobile app.
+ * English translation dictionary for VinhUni Pocket Guide.
  */
 
 import { TranslationKeys } from "./vi";
@@ -14,6 +14,9 @@ export const en: TranslationKeys = {
     cancel: "Cancel",
     confirm: "Confirm",
     save: "Save",
+    delete: "Delete",
+    deleteConfirmTitle: "Confirm Delete",
+    deleteConfirmMsg: "Are you sure you want to delete this?",
     close: "Close",
     back: "Back",
     all: "All",
@@ -25,6 +28,14 @@ export const en: TranslationKeys = {
     minutes: "mins",
     meters: "m",
     kilometers: "km",
+    rightAhead: "right ahead",
+    lessThan1Min: "< 1 min",
+    approved: "Approved",
+    updatedAt: "Updated",
+    personal: "Personal",
+    pinned: "Pinned",
+    cannotMakeCall: "Cannot make phone calls on this device.",
+    locationError: "Unable to get current location.",
   },
 
   tabs: {
@@ -40,30 +51,31 @@ export const en: TranslationKeys = {
     greeting: "Hello,",
     subGreeting: "Have an inspiring and productive day!",
     aiAssistantTitle: "VinhUni AI Assistant",
-    aiAssistantDesc: "Ask about academic rules, procedures, campus offices...",
+    aiAssistantDesc:
+      "Ask about academic rules, scholarships, campus offices & procedures...",
     askNow: "Ask now",
     mapHeroTitle: "Smart 3D Campus",
     mapHeroDesc:
       "Find lecture halls, walking routes and 3D buildings of Vinh University.",
-    exploreMap: "Open map",
+    exploreMap: "Open Map",
     quickActions: "Quick Actions",
     actionDepartment: "Departments",
     actionHandbook: "Handbook",
     actionCalendar: "Calendar",
     actionNews: "News",
     actionSos: "SOS Hotline",
-    latestNews: "Latest News & Announcements",
+    latestNews: "Latest News & Notices",
     categoriesTitle: "Handbook Categories",
   },
 
   map: {
     title: "VinhUni Map",
     subtitle: "Vinh University Campus Navigation",
-    searchPlaceholder: "Search buildings, departments, halls...",
+    searchPlaceholder: "Search...",
     routeTitle: "Walking Route",
     startPoint: "Starting point...",
     destinationPoint: "Select destination...",
-    yourLocation: "Your current location (GPS)",
+    yourLocation: "Your location (GPS)",
     startNavigation: "Start Navigation (Live Turn-by-Turn)",
     stopNavigation: "Exit navigation",
     offRouteAlert: "Off route • Recalculating path...",
@@ -79,6 +91,12 @@ export const en: TranslationKeys = {
     locationPermissionDeniedMsg:
       "Location permission is required to display your position on campus.",
     understood: "Understood",
+    categories: {
+      buildings: "Buildings",
+      food: "Dining",
+      bus: "Bus Station",
+      medical: "Medical Center",
+    },
     maneuvers: {
       straight: "Go straight for {{distance}}",
       slightLeft: "Slight left in {{distance}}",
@@ -90,8 +108,13 @@ export const en: TranslationKeys = {
       uturn: "Make a U-turn in {{distance}}",
       arrive: "You have arrived at your destination",
       straightNow: "Continue straight ahead",
+      slightLeftNow: "Keep slight left",
+      slightRightNow: "Keep slight right",
       leftNow: "Turn left now",
       rightNow: "Turn right now",
+      sharpLeftNow: "Sharp left now",
+      sharpRightNow: "Sharp right now",
+      uturnNow: "Make a U-turn now",
     },
   },
 
@@ -99,20 +122,24 @@ export const en: TranslationKeys = {
     title: "VinhUni AI Assistant",
     subtitle: "Online 24/7",
     clearHistory: "Clear chat",
-
     initialGreeting:
-      "Hello! I am your VinhUni AI Assistant. How can I help you today with university regulations, scholarships, campus locations, or student procedures?",
+      "Hello! I am the Vinh University AI Assistant. How can I help you with academic regulations, scholarships, campus locations, or procedures today?",
     placeholder: "Ask me anything...",
     sending: "Sending...",
     thinking: "AI is thinking and synthesizing handbook documents...",
     suggestionsTitle: "Popular Questions:",
     errorMsg:
-      "Sorry, could not connect to AI service. Please try again in a moment.",
+      "Could not connect to AI Chatbot. Please check your network and try again.",
+    destinationFromChat: "Destination from Chat",
+    navigateHere: "Navigate here",
+    viewOnMap: "View on map",
+    call: "Call: {{phone}}",
+    sourcesTitle: "Sources & References",
     quickQuestions: [
       "What are the requirements for academic merit scholarships?",
-      "Where is the Academic Affairs Office and what are their hours?",
-      "How do I request a student status verification certificate?",
-      "How can I register for course retake / grade improvement?",
+      "Where is the Academic Affairs Office located and what are its hours?",
+      "How do I apply for a student certificate verification?",
+      "How do I register for course retakes / grade improvement exams?",
     ],
   },
 
@@ -120,12 +147,17 @@ export const en: TranslationKeys = {
     title: "VinhUni Calendar",
     subtitle: "Academic schedule, exams and campus events",
     noEvents: "No events scheduled for this month",
+    noEventsDay: "No events on this day",
+    eventsCountDay: "{{count}} events on {{date}}",
+    noEventsCountDay: "No events on {{date}}",
+    allDay: "All day",
     eventTypeExam: "Exam Schedule",
     eventTypeHoliday: "Public Holiday",
     eventTypeAcademic: "Academic",
     eventTypeEvent: "Campus Event",
     month: "Month",
     year: "Year",
+    daysOfWeek: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
   },
 
   news: {
@@ -133,9 +165,13 @@ export const en: TranslationKeys = {
     subtitle: "Official announcements and latest updates",
     searchNews: "Search news and notices...",
     noNewsFound: "No articles match your search",
+    emptyNewsTitle: "No news yet",
+    emptyNewsSubtitle: "No articles have been published yet",
     publishedOn: "Published on",
     author: "Source",
     share: "Share",
+    pinned: "Pinned",
+    errorDetail: "Cannot load article content.",
   },
 
   handbook: {
@@ -143,9 +179,20 @@ export const en: TranslationKeys = {
     subtitle: "Full university regulations, guidelines and student services",
     searchPlaceholder: "Search rules, tuition, forms...",
     noDocsFound: "No documents match your query",
+    loadingDoc: "Loading full document...",
+    errorDoc: "Unable to load document content.",
+    emptyDocContent:
+      "This document does not have full text content yet or is being processed.",
+    yearPrefix: "Year",
+    readDoc: "Read Document",
     categoryAll: "All",
     categories: {
       quy_che_dao_tao: "Academic Regulations",
+      de_an: "Admissions Scheme",
+      quy_che: "Rules & Guidelines",
+      diem_chuan: "Benchmark Scores",
+      huong_dan: "Procedure Guide",
+      hoc_phi: "Tuition & Dorm",
       hoc_phi_hoc_bong: "Tuition & Scholarships",
       cong_tac_sinh_vien: "Student Affairs",
       ho_tro_viec_lam: "Career Support",
@@ -163,18 +210,27 @@ export const en: TranslationKeys = {
     subtitle: "24/7 Student support hotline",
     sosButton: "CALL EMERGENCY HOTLINE",
     setupPersonalContact: "Add Personal Emergency Contact",
-    setupPersonalDesc: "Add a trusted contact to instantly receive your live GPS location during an emergency",
+    setupPersonalDesc:
+      "Add a trusted contact to instantly receive your live GPS location during an emergency",
     sendGpsTo: "Send Emergency GPS to {{name}}",
     editPersonal: "Change Contact",
     personalBadge: "Your Trusted Contact",
     namePlaceholder: "Contact Name (e.g. Mom, Dad, Roommate)",
     phonePlaceholder: "Phone Number (e.g. 0912345678)",
+    nameLabel: "Contact Name",
+    phoneLabel: "Phone Number",
+    nameRequired: "Please enter contact name.",
+    phoneRequired: "Please enter a valid phone number.",
+    deleteConfirm: "Are you sure you want to delete this emergency contact?",
     saveContact: "Save Contact",
+    support247: "24/7 Support Hotline",
+    sosSmsBody:
+      "[EMERGENCY SOS] I need urgent assistance at Vinh University! My current location: {{url}}",
     securityTitle: "Campus Security & Safety",
-    medicalTitle: "University Health Clinic",
-    studentAffairsTitle: "Student Affairs Department",
+    medicalTitle: "Campus Medical Station",
+    studentAffairsTitle: "Political & Student Affairs Office",
     hotline: "Hotline",
-    location: "Duty Station",
+    location: "Station Location",
   },
 
   language: {

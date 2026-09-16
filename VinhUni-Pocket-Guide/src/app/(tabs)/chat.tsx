@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -30,93 +30,92 @@ type Message = {
   isUser: boolean;
   sources?: string[];
   coordinate?: { lat: number; lng: number };
+  hasMultipleLocations?: boolean;
   phoneNumber?: string;
 };
 
-/** Typing indicator — 3 chấm nhảy */
+/** Typing indicator — 3 chấm nhảy động mượt mà kèm dòng trạng thái suy nghĩ */
 function TypingIndicator() {
-  const dots = [useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current];
+  const { t } = useTranslation();
+  const dot1 = useRef(new Animated.Value(0)).current;
+  const dot2 = useRef(new Animated.Value(0)).current;
+  const dot3 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const anims = dots.map((dot, i) =>
-      Animated.loop(
+    const createBounce = (anim: Animated.Value, delay: number) => {
+      return Animated.loop(
         Animated.sequence([
-          Animated.delay(i * 160),
-          Animated.timing(dot, { toValue: -6, duration: 280, useNativeDriver: true }),
-          Animated.timing(dot, { toValue: 0, duration: 280, useNativeDriver: true }),
-          Animated.delay(480 - i * 160),
+          Animated.delay(delay),
+          Animated.timing(anim, {
+            toValue: -6,
+            duration: 260,
+            useNativeDriver: true,
+          }),
+          Animated.timing(anim, {
+            toValue: 0,
+            duration: 260,
+            useNativeDriver: true,
+          }),
+          Animated.delay(350),
         ])
-      )
-    );
-    anims.forEach(a => a.start());
-    return () => anims.forEach(a => a.stop());
-  }, []);
+      );
+    };
+
+    const anim1 = createBounce(dot1, 0);
+    const anim2 = createBounce(dot2, 140);
+    const anim3 = createBounce(dot3, 280);
+
+    anim1.start();
+    anim2.start();
+    anim3.start();
+
+    return () => {
+      anim1.stop();
+      anim2.stop();
+      anim3.stop();
+    };
+  }, [dot1, dot2, dot3]);
 
   return (
-    <View style={typingStyles.wrapper}>
-      <View style={typingStyles.avatar}>
+    <View style={[styles.messageWrapper, styles.messageWrapperBot]}>
+      <View style={styles.botAvatar}>
         <Ionicons name="sparkles" size={14} color={colors.accent} />
       </View>
-      <View style={typingStyles.bubble}>
-        <View style={typingStyles.dotsRow}>
-          {dots.map((dot, i) => (
-            <Animated.View
-              key={i}
-              style={[typingStyles.dot, { transform: [{ translateY: dot }] }]}
-            />
-          ))}
+      <View style={[styles.messageBubble, styles.messageBot, styles.typingBubble]}>
+        <View style={styles.dotsRow}>
+          <Animated.View style={[styles.dot, { transform: [{ translateY: dot1 }] }]} />
+          <Animated.View style={[styles.dot, { transform: [{ translateY: dot2 }] }]} />
+          <Animated.View style={[styles.dot, { transform: [{ translateY: dot3 }] }]} />
         </View>
+        <Text style={styles.typingText}>{t('chat.thinking')}</Text>
       </View>
     </View>
   );
 }
 
-const typingStyles = StyleSheet.create({
-  wrapper: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 8 },
-  avatar: {
-    width: 32, height: 32, borderRadius: 16,
-    backgroundColor: colors.primaryLight,
-    justifyContent: 'center', alignItems: 'center',
-    marginRight: spacing.sm, borderWidth: 1, borderColor: colors.border,
-  },
-  bubble: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderBottomLeftRadius: radius.xs,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  dotsRow: { flexDirection: 'row', gap: 5, alignItems: 'center' },
-  dot: {
-    width: 7, height: 7, borderRadius: 4,
-    backgroundColor: colors.primaryMid,
-  },
-});
-
 export default function ChatScreen() {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
+  const insets = useSafeAreaInsets();
   const setDestination = useNavigationStore((state) => state.setDestination);
+  const router = useRouter();
+
+  const initialGreeting = useMemo(() => t('chat.initialGreeting'), [t]);
+
   const [messages, setMessages] = useState<Message[]>([
     {
-      id: 'welcome',
-      text: t('chat.initialGreeting'),
+      id: '1',
+      text: initialGreeting,
       isUser: false,
     },
   ]);
 
-  // Cập nhật lại tin nhắn chào mừng ngay khi người dùng chuyển đổi ngôn ngữ
+  // Cập nhật lại tin nhắn chào đầu tiên khi người dùng đổi ngôn ngữ
   useEffect(() => {
     setMessages(prev => {
-      if (prev.length === 1 && prev[0].id === 'welcome') {
-        return [{
-          id: 'welcome',
-          text: t('chat.initialGreeting'),
-          isUser: false,
-        }];
+      if (prev.length > 0 && prev[0].id === '1') {
+        const updated = [...prev];
+        updated[0] = { ...updated[0], text: t('chat.initialGreeting') };
+        return updated;
       }
       return prev;
     });
@@ -130,18 +129,28 @@ export default function ChatScreen() {
 
   const parseActionTokens = (text: string) => {
     let cleanText = text;
+    const coordRegexGlobal = /\[Tọa độ:\s*([\d.-]+),\s*([\d.-]+)\]/gi;
+    const allMatches = [...text.matchAll(coordRegexGlobal)];
+
     let coordinate: { lat: number; lng: number } | undefined;
-    const coordRegex = /\[Tọa độ:\s*([\d.]+),\s*([\d.]+)\]/i;
-    const match = cleanText.match(coordRegex);
-    if (match) {
-      coordinate = { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
-      cleanText = cleanText.replace(coordRegex, '').trim();
+    let hasMultipleLocations = false;
+
+    if (allMatches.length === 1) {
+      // Đúng 1 địa điểm -> Hiển thị nút Chỉ đường
+      coordinate = { lat: parseFloat(allMatches[0][1]), lng: parseFloat(allMatches[0][2]) };
+    } else if (allMatches.length > 1) {
+      // Nhiều hơn 1 địa điểm -> Không hiển thị nút chỉ đường đơn lẻ, hiển thị nút Bản đồ chung
+      hasMultipleLocations = true;
     }
+
+    cleanText = cleanText.replace(coordRegexGlobal, '').trim();
+
     let phoneNumber: string | undefined;
     const phoneRegex = /(0[3|5|7|8|9])+([0-9]{8})\b/;
     const phoneMatch = cleanText.match(phoneRegex);
     if (phoneMatch) phoneNumber = phoneMatch[0];
-    return { cleanText, coordinate, phoneNumber };
+
+    return { cleanText, coordinate, hasMultipleLocations, phoneNumber };
   };
 
   const sendMessage = async () => {
@@ -159,32 +168,28 @@ export default function ChatScreen() {
       });
       if (res.ok) {
         const data = await res.json();
-        const { cleanText, coordinate, phoneNumber } = parseActionTokens(data.answer);
+        const { cleanText, coordinate, hasMultipleLocations, phoneNumber } = parseActionTokens(data.answer);
         setMessages(prev => [...prev, {
           id: (Date.now() + 1).toString(), text: cleanText, isUser: false,
-          sources: data.sources, coordinate, phoneNumber,
+          sources: data.sources, coordinate, hasMultipleLocations, phoneNumber,
         }]);
       } else {
         const err = await res.json().catch(() => ({}));
         throw new Error(err?.detail || `Lỗi từ server: ${res.status}`);
       }
     } catch (e: any) {
-      const isNetworkError = e?.message?.includes('Network request failed') || e?.message?.includes('fetch');
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
-        text: isNetworkError
-          ? 'Không thể kết nối đến AI Chatbot. Vui lòng kiểm tra Docker đang chạy (port 8001) và thử lại.'
-          : `Xin lỗi, tôi gặp sự cố: ${e?.message || 'Lỗi không xác định'}`,
+        text: t('chat.errorMsg'),
         isUser: false,
       }]);
     } finally {
       setLoading(false);
-
     }
   };
 
   const handleNavigate = (coord: { lat: number; lng: number }) => {
-    setDestination({ name: 'Điểm đến từ Chat', latitude: coord.lat, longitude: coord.lng });
+    setDestination({ name: t('chat.destinationFromChat'), latitude: coord.lat, longitude: coord.lng });
     router.push('/(tabs)/map');
   };
 
@@ -216,24 +221,43 @@ export default function ChatScreen() {
             {item.text}
           </Markdown>
 
-          {item.coordinate && (
-            <TouchableOpacity style={styles.actionButton} onPress={() => handleNavigate(item.coordinate!)}>
+          {/* Đúng 1 địa điểm: Hiển thị nút Chỉ đường trực tiếp */}
+          {item.coordinate && !item.hasMultipleLocations && (
+            <TouchableOpacity 
+              style={styles.actionButton} 
+              onPress={() => handleNavigate(item.coordinate!)}
+              activeOpacity={0.8}
+            >
               <Ionicons name="navigate" size={15} color={colors.white} />
-              <Text style={styles.actionText}>Chỉ đường đến đây</Text>
+              <Text style={styles.actionText}>{t('chat.navigateHere')}</Text>
             </TouchableOpacity>
           )}
+
+          {/* Nhiều hơn 1 địa điểm: Hiển thị nút Xem trên bản đồ */}
+          {item.hasMultipleLocations && (
+            <TouchableOpacity 
+              style={[styles.actionButton, { backgroundColor: colors.accent }]} 
+              onPress={() => router.push('/(tabs)/map')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="map" size={15} color={colors.white} />
+              <Text style={styles.actionText}>{t('chat.viewOnMap')}</Text>
+            </TouchableOpacity>
+          )}
+
           {item.phoneNumber && (
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: colors.success }]}
               onPress={() => Linking.openURL(`tel:${item.phoneNumber}`)}
+              activeOpacity={0.8}
             >
               <Ionicons name="call" size={15} color={colors.white} />
-              <Text style={styles.actionText}>Gọi: {item.phoneNumber}</Text>
+              <Text style={styles.actionText}>{t('chat.call', { phone: item.phoneNumber })}</Text>
             </TouchableOpacity>
           )}
           {item.sources && item.sources.length > 0 && (
             <View style={styles.sourcesContainer}>
-              <Text style={styles.sourcesTitle}>Nguồn tham khảo</Text>
+              <Text style={styles.sourcesTitle}>{t('chat.sourcesTitle')}</Text>
               {item.sources.map((src, idx) => (
                 <Text key={idx} style={styles.sourceItem}>• {src}</Text>
               ))}
@@ -385,6 +409,31 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     ...shadows.small,
+  },
+  typingBubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    height: 16,
+    justifyContent: 'center',
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.accent,
+  },
+  typingText: {
+    fontSize: typography.size.xs,
+    color: colors.textSecondary,
+    fontStyle: 'italic',
   },
   actionButton: {
     flexDirection: 'row',

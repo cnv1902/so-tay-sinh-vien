@@ -12,11 +12,15 @@ import {
   shadows,
 } from '../../design';
 
-export default function CurrentLocationButton() {
+interface CurrentLocationButtonProps {
+  onPress?: () => void;
+}
+
+export default function CurrentLocationButton({ onPress }: CurrentLocationButtonProps = {}) {
   return (
     <View style={styles.buttonWrapper}>
       <BlurView intensity={80} tint="light" style={styles.blurContainer}>
-        <TouchableOpacity style={styles.button} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.button} onPress={onPress} activeOpacity={0.7}>
           <Ionicons
             name="locate"
             size={24}

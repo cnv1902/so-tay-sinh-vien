@@ -158,10 +158,10 @@ async def index_all_departments() -> int:
 
 
 async def sync_single_department(dept_id: int) -> bool:
-    """Cập nhật hoặc xóa vector của 1 phòng ban cụ thể khi Admin thao tác."""
-    point_id = get_department_point_id(dept_id)
+    """Cập nhật hoặc xóa vector của 1 phòng ban cụ thể (3 ngôn ngữ VI-EN-LO) khi Admin thao tác."""
     client = _get_client()
     collection = get_collection_name()
+    point_ids = [get_department_point_id(dept_id, lang=l) for l in ["vi", "en", "lo"]]
 
     try:
         async with AsyncSessionLocal() as session:
@@ -170,19 +170,16 @@ async def sync_single_department(dept_id: int) -> bool:
             dept = result.scalar_one_or_none()
 
             if not dept:
-                # Nếu đã bị xóa khỏi DB -> Xóa Point khỏi Qdrant
-                logger.info(f"[DeptIndexer] Xóa point {point_id} của dept_id={dept_id} khỏi Qdrant")
+                # Nếu đã bị xóa khỏi DB -> Xóa toàn bộ 3 points (vi, en, lo) khỏi Qdrant
+                logger.info(f"[DeptIndexer] Xóa toàn bộ points của dept_id={dept_id} khỏi Qdrant: {point_ids}")
                 await asyncio.to_thread(
                     client.delete,
                     collection_name=collection,
-                    points_selector=qmodels.PointIdsList(points=[point_id])
+                    points_selector=qmodels.PointIdsList(points=point_ids)
                 )
                 return True
 
-            semantic_text = build_department_semantic_text(dept)
-            vector = await asyncio.to_thread(embed, semantic_text)
-            
-            building_name = dept.building.name if dept.building else "Chưa xác định"
+            points = []
             lat = dept.latitude or (dept.building.latitude if dept.building else None)
             lng = dept.longitude or (dept.building.longitude if dept.building else None)
 
@@ -194,35 +191,50 @@ async def sync_single_department(dept_id: int) -> bool:
 
             coord_token = f"[Tọa độ: {lat_float}, {lng_float}]" if lat_float and lng_float else ""
 
-            payload = {
-                "doc_type": "phong_ban",
-                "department_id": dept.id,
-                "name": dept.name,
-                "building_name": building_name,
-                "floor": dept.floor,
-                "room_number": dept.room_number,
-                "phone_number": dept.phone_number,
-                "working_hours": dept.working_hours,
-                "latitude": lat_float,
-                "longitude": lng_float,
-                "coord_token": coord_token,
-                "content": semantic_text,
-            }
+            for lang in ["vi", "en", "lo"]:
+                semantic_text = build_department_semantic_text(dept, lang=lang)
+                vector = await asyncio.to_thread(embed, semantic_text)
+                p_id = get_department_point_id(dept_id, lang=lang)
 
-            point = qmodels.PointStruct(
-                id=point_id,
-                vector={
-                    "dense": vector["dense"],
-                    "sparse": qmodels.SparseVector(
-                        indices=vector["sparse_indices"],
-                        values=vector["sparse_values"]
-                    )
-                },
-                payload=payload
-            )
+                name = dept.name
+                building_name = dept.building.name if dept.building else "Khuôn viên trường"
+                if lang == "en":
+                    name = getattr(dept, "name_en", None) or dept.name
+                    building_name = getattr(dept.building, "name_en", None) or building_name if dept.building else building_name
+                elif lang == "lo":
+                    name = getattr(dept, "name_lao", None) or dept.name
+                    building_name = getattr(dept.building, "name_lao", None) or building_name if dept.building else building_name
 
-            await asyncio.to_thread(upsert_points, [point])
-            logger.info(f"[DeptIndexer] ✅ Cập nhật vector cho dept_id={dept_id} ({dept.name}) thành công.")
+                payload = {
+                    "doc_type": "phong_ban",
+                    "department_id": dept.id,
+                    "lang": lang,
+                    "name": name,
+                    "building_name": building_name,
+                    "floor": dept.floor,
+                    "room_number": dept.room_number,
+                    "phone_number": dept.phone_number,
+                    "working_hours": dept.working_hours,
+                    "latitude": lat_float,
+                    "longitude": lng_float,
+                    "coord_token": coord_token,
+                    "content": semantic_text,
+                }
+
+                points.append(qmodels.PointStruct(
+                    id=p_id,
+                    vector={
+                        "dense": vector["dense"],
+                        "sparse": qmodels.SparseVector(
+                            indices=vector["sparse_indices"],
+                            values=vector["sparse_values"]
+                        )
+                    },
+                    payload=payload
+                ))
+
+            await asyncio.to_thread(upsert_points, points)
+            logger.info(f"[DeptIndexer] ✅ Cập nhật {len(points)} vectors (VI-EN-LO) cho dept_id={dept_id} ({dept.name}) thành công.")
             return True
 
     except Exception as e:

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import Markdown from 'react-native-markdown-display';
 import { useNewsDetail } from '../../features/news/useNews';
 import { colors, spacing, typography, radius, shadows } from '../../design';
@@ -11,8 +12,15 @@ import { htmlToMarkdown } from '../../utils/htmlUtils';
 export default function NewsDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { t, i18n } = useTranslation();
   const { newsDetail, isLoading, error } = useNewsDetail(id as string);
   const { width } = useWindowDimensions();
+
+  const currentLocale = (i18n.language || 'vi').startsWith('en')
+    ? 'en-US'
+    : (i18n.language || 'vi').startsWith('lo')
+    ? 'lo-LA'
+    : 'vi-VN';
 
   if (isLoading) {
     return (
@@ -25,15 +33,15 @@ export default function NewsDetailScreen() {
   if (error || !newsDetail) {
     return (
       <View style={styles.centerContainer}>
-        <Text style={styles.errorText}>Không thể tải nội dung bài viết.</Text>
+        <Text style={styles.errorText}>{t('news.errorDetail')}</Text>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backButtonText}>Quay lại</Text>
+          <Text style={styles.backButtonText}>{t('common.back')}</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  const formattedDate = new Date(newsDetail.created_at).toLocaleDateString('vi-VN', {
+  const formattedDate = new Date(newsDetail.created_at).toLocaleDateString(currentLocale, {
     day: '2-digit',
     month: 'long',
     year: 'numeric'
@@ -73,7 +81,7 @@ export default function NewsDetailScreen() {
             {newsDetail.is_pinned && (
               <View style={styles.pinBadge}>
                 <Ionicons name="pin" size={12} color="#fff" />
-                <Text style={styles.pinText}>Đã ghim</Text>
+                <Text style={styles.pinText}>{t('common.pinned')}</Text>
               </View>
             )}
           </View>

@@ -153,6 +153,8 @@ class UploadedDocument(Base):
     __tablename__ = "uploaded_documents"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    filename_en: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    filename_lao: Mapped[str | None] = mapped_column(String(255), nullable=True)
     year: Mapped[int | None] = mapped_column(Integer, nullable=True)
     doc_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     uploaded_by: Mapped[str | None] = mapped_column(String(50), nullable=True)
@@ -160,6 +162,8 @@ class UploadedDocument(Base):
     message: Mapped[str | None] = mapped_column(Text, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     full_content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    full_content_en: Mapped[str | None] = mapped_column(Text, nullable=True)
+    full_content_lao: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), server_default=func.now())
 

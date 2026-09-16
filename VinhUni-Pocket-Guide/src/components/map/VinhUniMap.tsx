@@ -14,6 +14,9 @@ interface VinhUniMapProps {
   buildings?: any;
   loading?: boolean;
   error?: string | null;
+  zoomLevel?: number;
+  bearing?: number;
+  pitch?: number;
   onMarkerPress?: (location: any) => void;
 }
 
@@ -31,11 +34,10 @@ export default function VinhUniMap({
   buildings,
   loading,
   error,
+  zoomLevel,
+  bearing = 0,
+  pitch = 0,
 }: VinhUniMapProps = {}) {
-
-  if (loading || error || !buildings) {
-    return <MapPlaceholder />;
-  }
 
   const userLocationData = userLocation ? {
     type: 'FeatureCollection' as const,
@@ -51,22 +53,81 @@ export default function VinhUniMap({
     ]
   } : emptyGeoJSON;
 
-  const centerCoord: [number, number] = userLocation && isNavigating
-    ? [userLocation.longitude, userLocation.latitude]
-    : [105.695, 18.660];
+  const normalizedRouteGeoJSON = React.useMemo(() => {
+    if (!routeGeoJSON) return emptyGeoJSON;
+    if (routeGeoJSON.type === "FeatureCollection") return routeGeoJSON;
+    if (routeGeoJSON.type === "Feature") {
+      return {
+        type: "FeatureCollection",
+        features: [routeGeoJSON],
+      };
+    }
+    return routeGeoJSON;
+  }, [routeGeoJSON]);
+
+  const VINH_UNI_CENTER: [number, number] = React.useMemo(() => [105.695, 18.660], []);
+
+  // Tâm camera: Luôn có tọa độ hợp lệ, mặc định tại Đại học Vinh (không bao giờ undefined để tránh bay về [0,0])
+  const [cameraCenter, setCameraCenter] = React.useState<[number, number]>(() => {
+    return userLocation ? [userLocation.longitude, userLocation.latitude] : [105.695, 18.660];
+  });
+
+  const isInteractingRef = React.useRef(false);
+  const interactionTimer = React.useRef<any>(null);
+
+  const handleTouchStart = React.useCallback(() => {
+    isInteractingRef.current = true;
+    if (interactionTimer.current) clearTimeout(interactionTimer.current);
+    interactionTimer.current = setTimeout(() => {
+      isInteractingRef.current = false;
+    }, 5000);
+  }, []);
+
+  // Cập nhật tâm camera khi người dùng di chuyển thực tế (> 8 mét)
+  React.useEffect(() => {
+    if (!userLocation || isInteractingRef.current) return;
+    const dLat = (userLocation.latitude - cameraCenter[1]) * 111000;
+    const dLng = (userLocation.longitude - cameraCenter[0]) * 105000;
+    const dist = Math.sqrt(dLat * dLat + dLng * dLng);
+
+    if (dist > 8) {
+      setCameraCenter([userLocation.longitude, userLocation.latitude]);
+    }
+  }, [userLocation?.latitude, userLocation?.longitude]);
+
+  // Khi bắt đầu dẫn đường: Căn giữa vị trí xuất phát
+  React.useEffect(() => {
+    if (isNavigating && userLocation) {
+      isInteractingRef.current = false;
+      setCameraCenter([userLocation.longitude, userLocation.latitude]);
+    }
+  }, [isNavigating]);
+
+  const currentZoom = zoomLevel !== undefined ? zoomLevel : (isNavigating ? 18 : 16.5);
+  // Không ép bearing về 0 để người dùng xoay 2 ngón tay không bị giật
+  const currentBearing = bearing !== 0 ? bearing : undefined;
+  const currentPitch = pitch !== undefined ? pitch : 0;
+
+  if (loading || error || !buildings) {
+    return <MapPlaceholder />;
+  }
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} onTouchStart={handleTouchStart}>
       <Map
         style={StyleSheet.absoluteFill}
         mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
       >
         <Camera
-          zoom={isNavigating ? 19 : 16}
-          pitch={isNavigating ? 45 : 0}
-          bearing={isNavigating ? heading : 0}
-          center={centerCoord}
-          duration={isNavigating ? 300 : 800}
+          initialViewState={{
+            center: VINH_UNI_CENTER,
+            zoom: 16.5,
+          }}
+          center={cameraCenter}
+          zoom={currentZoom}
+          pitch={currentPitch}
+          bearing={currentBearing}
+          duration={500}
         />
 
         {/* 1. Lớp tòa nhà 3D và nhãn */}
@@ -105,7 +166,7 @@ export default function VinhUniMap({
         />
 
         {/* 2. Tuyến đường dẫn đường */}
-        <GeoJSONSource id="route-source" data={routeGeoJSON || emptyGeoJSON} />
+        <GeoJSONSource id="route-source" data={normalizedRouteGeoJSON} />
         {/* Viền ngoài phát sáng của tuyến đường */}
         <Layer
           id="route-glow-layer"
@@ -135,7 +196,11 @@ export default function VinhUniMap({
             id="user-nav-puck-annotation"
             lngLat={[userLocation.longitude, userLocation.latitude]}
           >
-            <NavigationPuck animatedHeading={animatedHeading} isNavigating={isNavigating} />
+            <NavigationPuck
+              animatedHeading={animatedHeading}
+              mapBearing={currentBearing}
+              isNavigating={isNavigating}
+            />
           </ViewAnnotation>
         ) : (
 

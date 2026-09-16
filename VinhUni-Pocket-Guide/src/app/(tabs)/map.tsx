@@ -23,6 +23,9 @@ export default function MapScreen() {
     latitude: number;
     longitude: number;
   } | null>(null);
+  const [zoomLevel, setZoomLevel] = useState<number>(16);
+  const [bearing, setBearing] = useState<number>(0);
+  const [pitch, setPitch] = useState<number>(0);
   const [routeGeoJSON, setRouteGeoJSON] = useState<any>(null);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(
     null,
@@ -38,15 +41,18 @@ export default function MapScreen() {
   const { destination, clearDestination } = useNavigationStore();
   const { buildings, departments, loading, error } = useMapData();
 
-  // Trích xuất mảng tọa độ tuyến đường cho Live Navigation
+  // Trích xuất mảng tọa độ tuyến đường cho Live Navigation (Hỗ trợ cả Feature và FeatureCollection)
   const routeCoordinates = useMemo(() => {
-    if (!routeGeoJSON?.features?.[0]?.geometry?.coordinates) return [];
-    return routeGeoJSON.features[0].geometry.coordinates.map(
-      (c: [number, number]) => ({
-        latitude: c[1],
-        longitude: c[0],
-      }),
-    );
+    if (!routeGeoJSON) return [];
+    const rawCoords =
+      routeGeoJSON?.geometry?.coordinates ||
+      routeGeoJSON?.features?.[0]?.geometry?.coordinates ||
+      (Array.isArray(routeGeoJSON.coordinates) ? routeGeoJSON.coordinates : null);
+    if (!rawCoords || !Array.isArray(rawCoords)) return [];
+    return rawCoords.map((c: [number, number]) => ({
+      latitude: c[1],
+      longitude: c[0],
+    }));
   }, [routeGeoJSON]);
 
   // Hook theo dõi vị trí + hướng thiết bị + tính toán chỉ dẫn rẽ thời gian thực
@@ -57,9 +63,9 @@ export default function MapScreen() {
       const isLocationEnabled = await LocationExpo.hasServicesEnabledAsync();
       if (!isLocationEnabled) {
         Alert.alert(
-          "Dịch vụ vị trí đang tắt",
-          "Vui lòng bật GPS (Vị trí) trong cài đặt thiết bị để hiển thị vị trí của bạn trên bản đồ.",
-          [{ text: "Đã hiểu" }],
+          t('map.locationServicesOffTitle'),
+          t('map.locationServicesOffMsg'),
+          [{ text: t('map.understood') }],
         );
         return;
       }
@@ -67,38 +73,75 @@ export default function MapScreen() {
       let { status } = await LocationExpo.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
-          "Chưa cấp quyền vị trí",
-          "Bạn cần cấp quyền truy cập vị trí để ứng dụng có thể hiển thị bạn đang ở đâu trong khuôn viên trường.",
-          [{ text: "Đóng" }],
+          t('map.locationPermissionDeniedTitle'),
+          t('map.locationPermissionDeniedMsg'),
+          [{ text: t('common.close') }],
         );
         return;
       }
 
       try {
-        let loc = await LocationExpo.getCurrentPositionAsync({});
+        let loc = await LocationExpo.getCurrentPositionAsync({ accuracy: LocationExpo.Accuracy.High });
         setUserLocation({
           latitude: loc.coords.latitude,
           longitude: loc.coords.longitude,
         });
       } catch (e) {
         console.warn("Không thể lấy vị trí hiện tại:", e);
+        setUserLocation({ latitude: 18.6658, longitude: 105.6945 });
       }
     })();
   }, []);
 
+  // Xử lý khi nhận điểm đến từ AI Chatbot
   useEffect(() => {
-    if (destination && userLocation) {
-      setRoutingEnd(destination as any);
+    if (destination) {
+      const destLocation: Location = {
+        id: "chat-dest",
+        name: destination.name || t('chat.destinationFromChat'),
+        category: "administration",
+        isInsideCampus: true,
+        coordinate: {
+          latitude: destination.latitude,
+          longitude: destination.longitude,
+        },
+      };
+
+      setRoutingEnd(destLocation);
       setRoutingStart("USER_LOCATION");
+      setSelectedLocation(destLocation);
+      setIsNavigating(true);
+
+      // Tự động lấy vị trí hiện tại của người dùng và tính toán đường đi ngay lập tức
+      (async () => {
+        let startCoords = userLocation;
+        try {
+          const loc = await LocationExpo.getCurrentPositionAsync({ accuracy: LocationExpo.Accuracy.High });
+          startCoords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+          setUserLocation(startCoords);
+        } catch (err) {
+          if (!startCoords) {
+            startCoords = { latitude: 18.6658, longitude: 105.6945 };
+            setUserLocation(startCoords);
+          }
+        }
+        if (startCoords) {
+          fetchRoute(startCoords.latitude, startCoords.longitude, destination.latitude, destination.longitude);
+        }
+      })();
+
       clearDestination();
     }
-  }, [destination, userLocation]);
+  }, [destination]);
 
+  // Chỉ gọi backend tính toán lộ trình khi:
+  // 1. Người dùng chọn điểm xuất phát hoặc điểm đến mới
+  // 2. Hoặc khi người dùng đi lệch tuyến đường (isOffRoute)
   useEffect(() => {
     if (routingStart && routingEnd) {
       const startCoords =
         routingStart === "USER_LOCATION"
-          ? liveNav.currentPosition || userLocation
+          ? liveNav.currentPosition || userLocation || { latitude: 18.6658, longitude: 105.6945 }
           : routingStart.coordinate;
       const endCoords = routingEnd.coordinate;
 
@@ -110,11 +153,23 @@ export default function MapScreen() {
           endCoords.longitude,
         );
       }
-    } else {
+    } else if (!destination) {
       setRouteGeoJSON(null);
       setIsNavigating(false);
     }
-  }, [routingStart, routingEnd, userLocation]);
+  }, [routingStart, routingEnd]);
+
+  // Tự động tính toán lại đường đi khi người dùng đi lệch đường (isOffRoute)
+  useEffect(() => {
+    if (isNavigating && liveNav.isOffRoute && routingEnd && liveNav.currentPosition) {
+      fetchRoute(
+        liveNav.currentPosition.latitude,
+        liveNav.currentPosition.longitude,
+        routingEnd.coordinate.latitude,
+        routingEnd.coordinate.longitude,
+      );
+    }
+  }, [liveNav.isOffRoute]);
 
   const fetchRoute = async (
     startLat: number,
@@ -192,6 +247,26 @@ export default function MapScreen() {
 
   const currentDisplayPosition = liveNav.currentPosition || userLocation;
 
+  const handleZoomIn = () => setZoomLevel((prev) => Math.min(Number((prev + 1).toFixed(1)), 22));
+  const handleZoomOut = () => setZoomLevel((prev) => Math.max(Number((prev - 1).toFixed(1)), 11));
+  const handleRotateLeft = () => setBearing((prev) => (prev - 45 + 360) % 360);
+  const handleRotateRight = () => setBearing((prev) => (prev + 45) % 360);
+  const handleResetNorth = () => setBearing(0);
+  const handleToggle3D = () => setPitch((prev) => (prev === 0 ? 55 : 0));
+
+  const handleCenterLocation = async () => {
+    try {
+      let loc = await LocationExpo.getCurrentPositionAsync({ accuracy: LocationExpo.Accuracy.High });
+      setUserLocation({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+      });
+      setZoomLevel(17);
+    } catch (e) {
+      console.warn("Không thể lấy vị trí hiện tại:", e);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <VinhUniMap
@@ -203,6 +278,9 @@ export default function MapScreen() {
         buildings={buildings}
         loading={loading}
         error={error}
+        zoomLevel={zoomLevel}
+        bearing={bearing}
+        pitch={pitch}
         onMarkerPress={setSelectedLocation}
       />
 
@@ -216,7 +294,11 @@ export default function MapScreen() {
           estimatedSeconds={liveNav.estimatedSeconds}
           isOffRoute={liveNav.isOffRoute}
           arrived={liveNav.arrived}
-          onExit={() => setIsNavigating(false)}
+          onExit={() => {
+            setIsNavigating(false);
+            setRoutingStart(null);
+            setRoutingEnd(null);
+          }}
         />
       )}
 
@@ -235,11 +317,10 @@ export default function MapScreen() {
         </View>
       )}
 
-      {!isNavigating && (
-        <View style={styles.locationButton}>
-          <CurrentLocationButton />
-        </View>
-      )}
+    {/* Nút Định vị GPS Vị trí hiện tại - LUÔN HIỆN DIỆN */}
+      <View style={[styles.locationButton, isNavigating && styles.locationButtonNavigating]}>
+        <CurrentLocationButton onPress={handleCenterLocation} />
+      </View>
 
       <MapSmartSheet
         locations={allLocations}
@@ -253,9 +334,12 @@ export default function MapScreen() {
           setRoutingStart(null);
           setRoutingEnd(null);
           setIsNavigating(false);
+          setSelectedLocation(null);
         }}
         onStartNavigation={() => {
           setIsNavigating(true);
+          setZoomLevel(18);
+          handleCenterLocation();
         }}
         isNavigating={isNavigating}
       />
@@ -307,10 +391,24 @@ const styles = StyleSheet.create({
     ...shadows.medium,
   },
 
+  mapControls: {
+    position: "absolute",
+    right: spacing.lg,
+    bottom: 220, // Nằm trên CurrentLocationButton
+  },
+
+  mapControlsNavigating: {
+    bottom: 300, // Đẩy lên cao hơn khi lộ trình di chuyển / bottom sheet mở ra
+  },
+
   locationButton: {
     position: "absolute",
     right: spacing.lg,
-    bottom: 140, // Đẩy lên xíu tránh dính vào bottomCard
+    bottom: 155, // Vị trí thoáng ở chế độ thường
+  },
+
+  locationButtonNavigating: {
+    bottom: 235, // Đẩy lên cao để không bị che bởi khối lộ trình
   },
 
   bottomCardWrapper: {

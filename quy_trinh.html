@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="vi" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Báo cáo Đồ án: Sổ tay Sinh viên Vinh Uni</title>
+    <!-- Tailwind CSS cho Giao diện -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Mermaid.js cho Sơ đồ khối -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: true, 
+            theme: 'default',
+            securityLevel: 'loose',
+            flowchart: { useMaxWidth: false, htmlLabels: true }
+        });
+        
+        window.renderMermaid = () => {
+            mermaid.contentLoaded();
+        };
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .nav-link { transition: all 0.2s; }
+        .nav-link:hover { color: #2563eb; padding-left: 0.5rem; }
+        .mermaid { display: flex; justify-content: center; }
+        .mermaid svg { max-width: 100%; height: auto; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <!-- Header -->
+    <header class="bg-blue-700 text-white sticky top-0 z-50 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-bold lang-vi">Báo Cáo Đồ Án Kỹ Thuật Phần Mềm</h1>
+                <h1 class="text-2xl font-bold lang-lo hidden">ລາຍງານໂຄງການຈົບຊັ້ນ ວິສະວະກຳຊອບແວ</h1>
+                <p class="text-blue-100 text-sm mt-1 lang-vi">Hệ sinh thái "Sổ tay Sinh viên Vinh Uni" tích hợp Bản đồ 3D & AI Agentic RAG</p>
+                <p class="text-blue-100 text-sm mt-1 lang-lo hidden">ລະບົບນິເວດ "ຄູ່ມືນັກສຶກສາ Vinh Uni" ປະສົມປະສານແຜນທີ່ 3D & AI Agentic RAG</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="bg-blue-800 px-4 py-2 rounded-full text-sm font-semibold lang-vi hidden md:block">Tài liệu Thuyết trình / HDSD</span>
+                <span class="bg-blue-800 px-4 py-2 rounded-full text-sm font-semibold lang-lo hidden md:block">ເອກະສານນຳສະເໜີ / ຄູ່ມືການນຳໃຊ້</span>
+                
+                <!-- Language Switcher -->
+                <div class="bg-white rounded-lg p-1 flex shadow-sm">
+                    <button onclick="setLang('vi')" id="btn-vi" class="px-3 py-1 text-sm font-bold rounded-md bg-blue-100 text-blue-700">VI</button>
+                    <button onclick="setLang('lo')" id="btn-lo" class="px-3 py-1 text-sm font-bold rounded-md text-slate-600 hover:bg-slate-100">LO</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto px-4 py-8 flex flex-col md:flex-row gap-8">
+        
+        <!-- Sidebar Navigation -->
+        <aside class="w-full md:w-1/4 shrink-0">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 sticky top-28">
+                <h3 class="text-lg font-bold text-slate-800 mb-4 pb-2 border-b lang-vi">Mục lục</h3>
+                <h3 class="text-lg font-bold text-slate-800 mb-4 pb-2 border-b lang-lo hidden">ສາລະບານ</h3>
+                <nav class="flex flex-col gap-3 text-slate-600 font-medium">
+                    <a href="#phan1" class="nav-link">
+                        <span class="lang-vi">1. Đặt vấn đề & Ý tưởng</span>
+                        <span class="lang-lo hidden">1. ບັນຫາ & ແນວຄວາມຄິດ</span>
+                    </a>
+                    <a href="#phan2" class="nav-link">
+                        <span class="lang-vi">2. Tổng quan Chức năng App</span>
+                        <span class="lang-lo hidden">2. ພາບລວມຂອງໜ້າທີ່ແອັບ</span>
+                    </a>
+                    <a href="#phan3" class="nav-link">
+                        <span class="lang-vi">3. Kiến trúc VinhUni Map 3D</span>
+                        <span class="lang-lo hidden">3. ໂຄງສ້າງແຜນທີ່ VinhUni 3D</span>
+                    </a>
+                    <a href="#phan4" class="nav-link">
+                        <span class="lang-vi">4. Kiến trúc Agentic RAG Chatbot</span>
+                        <span class="lang-lo hidden">4. ໂຄງສ້າງ Agentic RAG Chatbot</span>
+                    </a>
+                    <a href="#phan5" class="nav-link text-blue-600 font-bold">
+                        <span class="lang-vi">5. Điểm mạnh vượt trội (Highlights)</span>
+                        <span class="lang-lo hidden">5. ຈຸດເດັ່ນຂອງລະບົບ (Highlights)</span>
+                    </a>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="w-full md:w-3/4 flex flex-col gap-10">
+            
+            <!-- Phần 1 -->
+            <section id="phan1" class="bg-white p-8 rounded-xl shadow-sm border border-slate-100 scroll-mt-24">
+                <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+                    <div class="w-10 h-10 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center font-bold text-xl">1</div>
+                    <h2 class="text-2xl font-bold text-slate-800 lang-vi">Đặt vấn đề & Ý tưởng (Motivation)</h2>
+                    <h2 class="text-2xl font-bold text-slate-800 lang-lo hidden">ບັນຫາ & ແນວຄວາມຄິດ (Motivation)</h2>
+                </div>
+                
+                <div class="prose max-w-none text-slate-600 leading-relaxed space-y-4 lang-vi">
+                    <p><strong>Nỗi đau (Pain Points):</strong> Hàng năm, Đại học Vinh đón nhận hàng ngàn tân sinh viên và lưu học sinh quốc tế (đặc biệt là sinh viên Lào). Nhóm sinh viên này thường gặp "cú sốc văn hóa và hành chính":</p>
+                    <ul class="list-disc pl-6 space-y-2">
+                        <li><strong>Rào cản ngôn ngữ và khối lượng thông tin:</strong> Các văn bản quy chế học vụ, sổ tay sinh viên thường rất dài, ngôn từ hàn lâm và 100% bằng tiếng Việt. Sinh viên quốc tế hầu như không thể đọc hiểu, dẫn đến vi phạm quy chế hoặc bỏ lỡ quyền lợi.</li>
+                        <li><strong>Lạc lõng trong không gian:</strong> Khuôn viên trường rộng lớn với nhiều khu nhà, tòa nhà. Tân sinh viên thường xuyên không biết phòng học ở đâu, tòa A1, A2 nằm chỗ nào.</li>
+                        <li><strong>Mù mờ về thủ tục hành chính:</strong> Khi cần xin giấy xác nhận sinh viên, giấy vay vốn, nộp học phí hay rút học bạ... sinh viên không biết phải đi đến phòng ban nào, gặp ai, quy trình ra sao.</li>
+                    </ul>
+                    <p><strong>Giải pháp:</strong> Ứng dụng di động <strong>"Sổ tay Sinh viên Vinh Uni"</strong> ra đời. Đây không chỉ là một app đọc tin tức đơn thuần, mà là một hệ sinh thái tích hợp <strong>Bản đồ số 3D (VinhUni Map)</strong> để định vị không gian và <strong>Trợ lý ảo AI (Agentic RAG) đa ngôn ngữ</strong> hoạt động 24/7 để gỡ rối mọi thủ tục hành chính.</p>
+                </div>
+                
+                <div class="prose max-w-none text-slate-600 leading-relaxed space-y-4 lang-lo hidden">
+                    <p><strong>ບັນຫາທີ່ພົບ (Pain Points):</strong> ໃນແຕ່ລະປີ, ມະຫາວິທະຍາໄລ Vinh ໄດ້ຮັບນັກສຶກສາໃໝ່ ແລະ ນັກສຶກສາຕ່າງປະເທດ (ໂດຍສະເພາະແມ່ນນັກສຶກສາລາວ) ເປັນຈຳນວນຫຼວງຫຼາຍ. ກຸ່ມນັກສຶກສານີ້ມັກຈະປະເຊີນກັບ "ຄວາມຫຍຸ້ງຍາກທາງດ້ານວັດທະນະທຳ ແລະ ການບໍລິຫານ":</p>
+                    <ul class="list-disc pl-6 space-y-2">
+                        <li><strong>ອຸປະສັກທາງດ້ານພາສາ ແລະ ຂໍ້ມູນມະຫາສານ:</strong> ເອກະສານລະບຽບການທາງວິຊາການ, ປຶ້ມຄູ່ມືນັກສຶກສາມັກຈະຍາວຫຼາຍ, ມີຄຳສັບທາງວິຊາການ ແລະ ເປັນພາສາຫວຽດນາມ 100%. ນັກສຶກສາຕ່າງປະເທດເກືອບບໍ່ສາມາດອ່ານ ແລະ ເຂົ້າໃຈໄດ້, ເຊິ່ງນຳໄປສູ່ການລະເມີດລະບຽບການ ຫຼື ພາດສິດທິປະໂຫຍດຕ່າງໆ.</li>
+                        <li><strong>ຫຼົງທາງໃນວິທະຍາເຂດ:</strong> ວິທະຍາເຂດມີຂະໜາດໃຫຍ່ຫຼາຍ ມີຫຼາຍຕຶກ ແລະ ອາຄານ. ນັກສຶກສາໃໝ່ມັກຈະບໍ່ຮູ້ວ່າຫ້ອງຮຽນຢູ່ໃສ, ຕຶກ A1, A2 ຢູ່ໃສ.</li>
+                        <li><strong>ຄວາມບໍ່ຊັດເຈນກ່ຽວກັບຂັ້ນຕອນການບໍລິຫານ:</strong> ເມື່ອຕ້ອງການຂໍໃບຢັ້ງຢືນນັກສຶກສາ, ໃບກູ້ຢືມເງິນ, ຈ່າຍຄ່າຮຽນ ຫຼື ຖອນໃບຄະແນນ... ນັກສຶກສາບໍ່ຮູ້ວ່າຕ້ອງໄປຫາພະແນກໃດ, ພົບໃຜ, ແລະ ມີຂັ້ນຕອນແນວໃດ.</li>
+                    </ul>
+                    <p><strong>ວິທີແກ້ໄຂ:</strong> ແອັບພລິເຄຊັນມືຖື <strong>"ຄູ່ມືນັກສຶກສາ Vinh Uni"</strong> ໄດ້ຖືກສ້າງຂຶ້ນ. ນີ້ບໍ່ແມ່ນພຽງແຕ່ແອັບອ່ານຂ່າວທຳມະດາ, ແຕ່ເປັນລະບົບນິເວດທີ່ປະສົມປະສານ <strong>ແຜນທີ່ 3D ດິຈິຕອລ (VinhUni Map)</strong> ເພື່ອການນຳທາງ ແລະ <strong>ຜູ້ຊ່ວຍສະເໝືອນ AI (Agentic RAG) ຫຼາຍພາສາ</strong> ທີ່ເຮັດວຽກ 24/7 ເພື່ອແກ້ໄຂທຸກບັນຫາທາງການບໍລິຫານ.</p>
+                </div>
+            </section>
+
+            <!-- Phần 2 -->
+            <section id="phan2" class="bg-white p-8 rounded-xl shadow-sm border border-slate-100 scroll-mt-24">
+                <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+                    <div class="w-10 h-10 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center font-bold text-xl">2</div>
+                    <h2 class="text-2xl font-bold text-slate-800 lang-vi">Tổng quan Chức năng Mobile App</h2>
+                    <h2 class="text-2xl font-bold text-slate-800 lang-lo hidden">ພາບລວມຂອງໜ້າທີ່ແອັບພລິເຄຊັນ</h2>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 lang-vi">
+                    <div class="border rounded-lg p-5 hover:border-blue-300 transition-colors bg-slate-50">
+                        <h4 class="font-bold text-lg text-blue-700 mb-2">📚 Đọc Sổ tay & Tin tức</h4>
+                        <p class="text-sm text-slate-600">Đọc các quy chế, hướng dẫn, tin tức của nhà trường. Hỗ trợ hiển thị Markdown đa ngôn ngữ tự động (Việt - Anh - Lào).</p>
+                    </div>
+                    <div class="border rounded-lg p-5 hover:border-blue-300 transition-colors bg-slate-50">
+                        <h4 class="font-bold text-lg text-blue-700 mb-2">☎️ Danh bạ & Lịch sự kiện</h4>
+                        <p class="text-sm text-slate-600">Tra cứu nhanh số điện thoại khẩn cấp, phòng ban chức năng. Xem lịch học, ngày nghỉ lễ, hạn chót đóng học phí.</p>
+                    </div>
+                    <div class="border rounded-lg p-5 hover:border-blue-300 transition-colors bg-slate-50">
+                        <h4 class="font-bold text-lg text-blue-700 mb-2">🗺️ Bản đồ 3D (VinhUni Map)</h4>
+                        <p class="text-sm text-slate-600">Bản đồ tương tác 3D. Nhấn vào tòa nhà xem phòng ban, tìm đường đi ngắn nhất từ vị trí hiện tại đến phòng ban cần tới.</p>
+                    </div>
+                    <div class="border rounded-lg p-5 hover:border-blue-300 transition-colors bg-slate-50">
+                        <h4 class="font-bold text-lg text-blue-700 mb-2">🤖 Trợ lý AI (Chatbot)</h4>
+                        <p class="text-sm text-slate-600">Chatbot trả lời bằng ngôn ngữ người dùng hỏi. Tích hợp khả năng chỉ đường tự động khi nhắc đến phòng ban.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 lang-lo hidden">
+                    <div class="border rounded-lg p-5 hover:border-blue-300 transition-colors bg-slate-50">
+                        <h4 class="font-bold text-lg text-blue-700 mb-2">📚 ອ່ານຄູ່ມື & ຂ່າວສານ</h4>
+                        <p class="text-sm text-slate-600">ອ່ານລະບຽບການ, ຄຳແນະນຳ, ຂ່າວສານຂອງໂຮງຮຽນ. ຮອງຮັບການສະແດງຜົນ Markdown ຫຼາຍພາສາອັດຕະໂນມັດ (ຫວຽດ - ອັງກິດ - ລາວ).</p>
+                    </div>
+                    <div class="border rounded-lg p-5 hover:border-blue-300 transition-colors bg-slate-50">
+                        <h4 class="font-bold text-lg text-blue-700 mb-2">☎️ ລາຍຊື່ຕິດຕໍ່ & ປະຕິທິນເຫດການ</h4>
+                        <p class="text-sm text-slate-600">ຄົ້ນຫາເບີໂທລະສັບສຸກເສີນ, ພະແນກການຕ່າງໆໄດ້ຢ່າງວ່ອງໄວ. ເບິ່ງຕາຕະລາງຮຽນ, ວັນພັກ, ກຳນົດເວລາຈ່າຍຄ່າຮຽນ.</p>
+                    </div>
+                    <div class="border rounded-lg p-5 hover:border-blue-300 transition-colors bg-slate-50">
+                        <h4 class="font-bold text-lg text-blue-700 mb-2">🗺️ ແຜນທີ່ 3D (VinhUni Map)</h4>
+                        <p class="text-sm text-slate-600">ແຜນທີ່ແບບໂຕ້ຕອບ 3D. ກົດທີ່ອາຄານເພື່ອເບິ່ງພະແນກ, ຊອກຫາເສັ້ນທາງທີ່ສັ້ນທີ່ສຸດຈາກຕຳແໜ່ງປັດຈຸບັນໄປຫາພະແນກທີ່ຕ້ອງການ.</p>
+                    </div>
+                    <div class="border rounded-lg p-5 hover:border-blue-300 transition-colors bg-slate-50">
+                        <h4 class="font-bold text-lg text-blue-700 mb-2">🤖 ຜູ້ຊ່ວຍ AI (Chatbot)</h4>
+                        <p class="text-sm text-slate-600">Chatbot ຕອບເປັນພາສາທີ່ຜູ້ໃຊ້ຖາມ. ປະສົມປະສານຄວາມສາມາດໃນການນຳທາງອັດຕະໂນມັດເມື່ອກ່າວເຖິງພະແນກ.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Phần 3 -->
+            <section id="phan3" class="bg-white p-8 rounded-xl shadow-sm border border-slate-100 scroll-mt-24">
+                <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+                    <div class="w-10 h-10 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center font-bold text-xl">3</div>
+                    <h2 class="text-2xl font-bold text-slate-800 lang-vi">Kiến trúc Bản đồ Số (VinhUni Map 3D)</h2>
+                    <h2 class="text-2xl font-bold text-slate-800 lang-lo hidden">ໂຄງສ້າງແຜນທີ່ດິຈິຕອລ (VinhUni Map 3D)</h2>
+                </div>
+                
+                <div class="lang-vi">
+                    <h3 class="font-bold text-lg text-slate-800 mb-3">1. Quy trình số hóa (Digitizing Space)</h3>
+                    <p class="text-slate-600 mb-4">Thay vì dùng Google Maps bị hạn chế chi tiết nội khu, chúng tôi tự xây dựng bản đồ số riêng trên nền tảng <strong>OpenStreetMap (OSM)</strong>.</p>
+                    <ul class="list-disc pl-6 space-y-2 text-slate-600 mb-6">
+                        <li>Sử dụng phần mềm GIS chuyên dụng <strong>(QGIS)</strong> để vẽ đè các đa giác (polygons) và đường thẳng (lines) đại diện cho Tòa nhà, Đường nội bộ, Cổng trường.</li>
+                        <li>Khởi tạo các <strong>Điểm neo (Anchor points)</strong> cho từng Tòa nhà và Phòng ban. Đây là đích đến chính xác khi thuật toán tìm đường hoạt động.</li>
+                        <li>Gắn Metadata: Mỗi khối tòa nhà đều được gắn thuộc tính chiều cao <code>height</code>, số tầng. Dữ liệu cuối cùng xuất ra định dạng chuẩn <strong>GeoJSON</strong>.</li>
+                    </ul>
+
+                    <h3 class="font-bold text-lg text-slate-800 mb-3">2. Trực quan hóa 3D trên Mobile App</h3>
+                    <p class="text-slate-600 mb-4">Sử dụng thư viện <code>@maplibre/maplibre-react-native</code> để render bản đồ với hiệu năng cao trên thiết bị di động.</p>
+                    <div class="bg-slate-800 text-green-400 p-4 rounded-lg font-mono text-sm mb-6 overflow-x-auto shadow-inner">
+                        // Nguyên lý hiển thị khối 3D<br>
+                        &lt;FillExtrusionLayer<br>
+                        &nbsp;&nbsp;id="3d-buildings"<br>
+                        &nbsp;&nbsp;style={{<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;fillExtrusionColor: '#e2e8f0',<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;fillExtrusionHeight: ['get', 'height'], // Lấy chiều cao từ GeoJSON<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;fillExtrusionOpacity: 0.8<br>
+                        &nbsp;&nbsp;}}<br>
+                        /&gt;
+                    </div>
+
+                    <h3 class="font-bold text-lg text-slate-800 mb-3">3. Thuật toán tìm đường đi ngắn nhất (Shortest Path Routing)</h3>
+                    <p class="text-slate-600 mb-4">Để dẫn đường từ vị trí GPS của sinh viên đến Phòng ban, hệ thống áp dụng lý thuyết Đồ thị (Graph Theory):</p>
+                    <ul class="list-disc pl-6 space-y-2 text-slate-600 mb-4">
+                        <li><strong>Mạng lưới đường bộ (Network Graph):</strong> Các đoạn thẳng (LineString) trong GeoJSON đường nội bộ cắt nhau tạo thành các Đỉnh (Nodes) và Cạnh (Edges). Chiều dài đoạn đường là Trọng số (Weight).</li>
+                        <li><strong>Thuật toán:</strong> Hệ thống Back-end / Cấu trúc Routing sử dụng thuật toán <strong>Dijkstra</strong> (hoặc biến thể <strong>A*</strong>) để duyệt qua đồ thị, tìm ra lộ trình có tổng trọng số nhỏ nhất.</li>
+                        <li><strong>Hiển thị:</strong> Lộ trình tìm được trả về dưới dạng chuỗi Tọa độ (Polyline). MapLibre sẽ vẽ một <code>LineLayer</code> màu xanh nổi bật dẫn từ Điểm A (User) đến Điểm B (Phòng ban).</li>
+                    </ul>
+                </div>
+
+                <div class="lang-lo hidden">
+                    <h3 class="font-bold text-lg text-slate-800 mb-3">1. ຂັ້ນຕອນການເຮັດເປັນດິຈິຕອລ (Digitizing Space)</h3>
+                    <p class="text-slate-600 mb-4">ແທນທີ່ຈະໃຊ້ Google Maps ເຊິ່ງມີຂໍ້ຈຳກັດໃນລາຍລະອຽດພາຍໃນ, ພວກເຮົາໄດ້ສ້າງແຜນທີ່ດິຈິຕອລຂອງພວກເຮົາເອງໃນແພລະຕະຟອມ <strong>OpenStreetMap (OSM)</strong>.</p>
+                    <ul class="list-disc pl-6 space-y-2 text-slate-600 mb-6">
+                        <li>ນຳໃຊ້ຊອບແວ GIS ສະເພາະທາງ <strong>(QGIS)</strong> ເພື່ອແຕ້ມຮູບຫຼາຍແຈ (polygons) ແລະ ເສັ້ນ (lines) ທີ່ເປັນຕົວແທນຂອງອາຄານ, ເສັ້ນທາງພາຍໃນ, ແລະ ປະຕູໂຮງຮຽນ.</li>
+                        <li>ສ້າງ <strong>ຈຸດສະມໍ (Anchor points)</strong> ສຳລັບແຕ່ລະອາຄານ ແລະ ພະແນກ. ນີ້ແມ່ນຈຸດໝາຍປາຍທາງທີ່ແນ່ນອນເມື່ອອັນກໍຣິທຶມການຊອກຫາເສັ້ນທາງເຮັດວຽກ.</li>
+                        <li>ເພີ່ມ Metadata: ແຕ່ລະອາຄານຈະຖືກຕິດຄັດດ້ວຍຄຸນລັກສະນະຄວາມສູງ <code>height</code>, ຈຳນວນຊັ້ນ. ຂໍ້ມູນສຸດທ້າຍຈະຖືກສົ່ງອອກໃນຮູບແບບມາດຕະຖານ <strong>GeoJSON</strong>.</li>
+                    </ul>
+
+                    <h3 class="font-bold text-lg text-slate-800 mb-3">2. ການສະແດງຜົນ 3D ເທິງແອັບມືຖື</h3>
+                    <p class="text-slate-600 mb-4">ນຳໃຊ້ຫໍສະໝຸດ <code>@maplibre/maplibre-react-native</code> ເພື່ອສະແດງແຜນທີ່ດ້ວຍປະສິດທິພາບສູງໃນອຸປະກອນມືຖື.</p>
+                    <div class="bg-slate-800 text-green-400 p-4 rounded-lg font-mono text-sm mb-6 overflow-x-auto shadow-inner">
+                        // ຫຼັກການສະແດງຜົນບລັອກ 3D<br>
+                        &lt;FillExtrusionLayer<br>
+                        &nbsp;&nbsp;id="3d-buildings"<br>
+                        &nbsp;&nbsp;style={{<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;fillExtrusionColor: '#e2e8f0',<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;fillExtrusionHeight: ['get', 'height'], // ດຶງຄວາມສູງຈາກ GeoJSON<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;fillExtrusionOpacity: 0.8<br>
+                        &nbsp;&nbsp;}}<br>
+                        /&gt;
+                    </div>
+
+                    <h3 class="font-bold text-lg text-slate-800 mb-3">3. ອັນກໍຣິທຶມການຊອກຫາເສັ້ນທາງທີ່ສັ້ນທີ່ສຸດ (Shortest Path Routing)</h3>
+                    <p class="text-slate-600 mb-4">ເພື່ອນຳທາງຈາກຕຳແໜ່ງ GPS ຂອງນັກສຶກສາໄປຫາພະແນກ, ລະບົບໄດ້ນຳໃຊ້ທິດສະດີກຣາຟ (Graph Theory):</p>
+                    <ul class="list-disc pl-6 space-y-2 text-slate-600 mb-4">
+                        <li><strong>ເຄືອຂ່າຍເສັ້ນທາງ (Network Graph):</strong> ພາກສ່ວນຂອງເສັ້ນ (LineString) ໃນ GeoJSON ເສັ້ນທາງພາຍໃນຕັດກັນເພື່ອສ້າງເປັນຈຸດຍອດ (Nodes) ແລະ ຂອບ (Edges). ຄວາມຍາວຂອງເສັ້ນທາງແມ່ນນ້ຳໜັກ (Weight).</li>
+                        <li><strong>ອັນກໍຣິທຶມ:</strong> ລະບົບ Back-end / ໂຄງສ້າງ Routing ນຳໃຊ້ອັນກໍຣິທຶມ <strong>Dijkstra</strong> (ຫຼື ຮູບແບບອື່ນ <strong>A*</strong>) ເພື່ອທ່ອງໄປໃນກຣາຟ, ຊອກຫາເສັ້ນທາງທີ່ມີນ້ຳໜັກລວມໜ້ອຍທີ່ສຸດ.</li>
+                        <li><strong>ການສະແດງຜົນ:</strong> ເສັ້ນທາງທີ່ພົບຈະຖືກສົ່ງກັບຄືນມາເປັນຊຸດຂອງພິກັດ (Polyline). MapLibre ຈະແຕ້ມ <code>LineLayer</code> ສີຟ້າທີ່ໂດດເດັ່ນນຳຈາກຈຸດ A (User) ໄປຫາຈຸດ B (Department).</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Phần 4 -->
+            <section id="phan4" class="bg-white p-8 rounded-xl shadow-sm border border-slate-100 scroll-mt-24">
+                <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+                    <div class="w-10 h-10 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center font-bold text-xl">4</div>
+                    <h2 class="text-2xl font-bold text-slate-800 lang-vi">Kiến trúc Chatbot Đa ngôn ngữ (Agentic RAG)</h2>
+                    <h2 class="text-2xl font-bold text-slate-800 lang-lo hidden">ໂຄງສ້າງ Chatbot ຫຼາຍພາສາ (Agentic RAG)</h2>
+                </div>
+                
+                <p class="text-slate-600 mb-6 lang-vi">Trái tim của ứng dụng là một Trợ lý ảo sử dụng kiến trúc AI tiên tiến nhất hiện nay: <strong>Agentic RAG kết hợp Query Translation (Dịch truy vấn).</strong> Để quý thầy cô dễ hình dung, dưới đây là chi tiết luồng xử lý nghiệp vụ từ lúc nhập liệu cho đến lúc trả lời sinh viên.</p>
+                <p class="text-slate-600 mb-6 lang-lo hidden">ຫົວໃຈຂອງແອັບພລິເຄຊັນແມ່ນຜູ້ຊ່ວຍສະເໝືອນທີ່ໃຊ້ສະຖາປັດຕະຍະກຳ AI ທີ່ກ້າວໜ້າທີ່ສຸດໃນປະຈຸບັນ: <strong>Agentic RAG ປະສົມປະສານກັບ Query Translation (ການແປຄຳຖາມ).</strong> ເພື່ອໃຫ້ອາຈານເຂົ້າໃຈງ່າຍ, ຂ້າງລຸ່ມນີ້ແມ່ນລາຍລະອຽດຂັ້ນຕອນການເຮັດວຽກ.</p>
+
+                <!-- Luồng 1 - Tiếng Việt -->
+                <div class="lang-vi">
+                    <h3 class="font-bold text-lg text-slate-800 mb-3 text-center">Luồng 1: Xử lý & Chuẩn bị Tri thức (Ingestion Pipeline)</h3>
+                    <div class="prose max-w-none text-slate-600 mb-6">
+                        <p>Luồng này hoạt động ngầm phía sau (Backend) mỗi khi Quản trị viên tải một tài liệu mới (ví dụ: Sổ tay sinh viên) lên hệ thống:</p>
+                        <ol>
+                            <li><strong>Bước 1 - Bóc tách (Parsing):</strong> Hệ thống sử dụng công cụ bóc tách để đọc file PDF/Word, chuyển đổi thành văn bản thuần. <br><em>👉 Ví dụ: Sổ tay 100 trang dạng PDF chứa bảng biểu, hình ảnh được bóc tách và làm sạch thành chữ thuần túy (Markdown).</em></li>
+                            <li><strong>Bước 2 - Cắt nhỏ (Chunking):</strong> Tài liệu dài được cắt thành các đoạn văn nhỏ để AI dễ đọc. <br><em>👉 Ví dụ: Một chương dài 5 trang về "Quy chế nội trú KTX" được cắt thành 20 đoạn văn (mỗi đoạn 5-7 câu). Việc này giúp AI tra cứu đúng trọng tâm không bị quá tải.</em></li>
+                            <li><strong>Bước 3 - Dịch thuật ngầm:</strong> Thay vì bắt AI dịch mỗi khi sinh viên hỏi (gây chậm), hệ thống có các Background Tasks tự động dịch toàn bộ nội dung sang tiếng Anh/Lào, lưu vào Cơ sở dữ liệu (PostgreSQL). <br><em>👉 Ví dụ: Đoạn "Giờ giới nghiêm KTX" được âm thầm dịch thành "ເວລາປິດຫໍພັກ" và lưu sẵn vào Database. Nhờ vậy, sinh viên mở app ra là đọc tiếng Lào mượt mà ngay lập tức.</em></li>
+                            <li><strong>Bước 4 - Vector hóa (Embedding):</strong> Các đoạn văn bản <em>tiếng Việt</em> sẽ được đưa qua mô hình AI biến thành các ma trận số và lưu vào Cơ sở dữ liệu Vector (Qdrant). <br><em>👉 Ví dụ: Chữ "Đóng cửa lúc 23h" được mã hóa thành ma trận số <code>[0.12, -0.45, ...]</code> giúp máy tính hiểu được "ý nghĩa thời gian" để so khớp ngữ nghĩa.</em></li>
+                        </ol>
+                    </div>
+                    <div class="border rounded-lg p-6 bg-slate-50 mb-10 overflow-x-auto">
+                        <div class="mermaid">
+                        graph TD
+                            A["Admin Upload PDF/Word"] --> B("MarkItDown: Chuyển sang Markdown Tiếng Việt")
+                            B --> C{"Background Tasks"}
+                            
+                            C -->|"Tác vụ 1: Dịch toàn văn"| D["Google Translator"]
+                            D --> E["Sinh ra Bản Tiếng Anh và Lào"]
+                            E --> F[("Cơ sở dữ liệu PostgreSQL: Lưu Sổ tay Đa ngôn ngữ")]
+                            
+                            C -->|"Tác vụ 2: Tạo Vector"| G["Chunking: Cắt nhỏ nội dung"]
+                            G --> H["Embedding Model"]
+                            H --> I[("Cơ sở dữ liệu Vector Qdrant: Lưu Vector 100% Tiếng Việt")]
+                            
+                            classDef db fill:#f9f0ff,stroke:#d8b4e2,stroke-width:2px;
+                            classDef ai fill:#e1f5fe,stroke:#81d4fa,stroke-width:2px;
+                            class I,F db;
+                            class H,D ai;
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Luồng 1 - Tiếng Lào -->
+                <div class="lang-lo hidden">
+                    <h3 class="font-bold text-lg text-slate-800 mb-3 text-center">ກະແສທີ 1: ການປະມວນຜົນ & ການກຽມຄວາມຮູ້ (Ingestion Pipeline)</h3>
+                    <div class="prose max-w-none text-slate-600 mb-6">
+                        <p>ກະແສນີ້ເຮັດວຽກຢູ່ເບື້ອງຫຼັງ (Backend) ທຸກຄັ້ງທີ່ຜູ້ບໍລິຫານອັບໂຫຼດເອກະສານໃໝ່ (ເຊັ່ນ: ປຶ້ມຄູ່ມືນັກສຶກສາ) ເຂົ້າໃນລະບົບ:</p>
+                        <ol>
+                            <li><strong>ຂັ້ນຕອນທີ 1 - ການແຍກຂໍ້ມູນ (Parsing):</strong> ລະບົບໃຊ້ເຄື່ອງມືເພື່ອອ່ານໄຟລ໌ PDF/Word, ປ່ຽນເປັນຮູບແບບຂໍ້ຄວາມລ້ວນ. <br><em>👉 ຕົວຢ່າງ: ປຶ້ມຄູ່ມື 100 ໜ້າທີ່ເປັນ PDF ຈະຖືກແຍກແລະທຳຄວາມສະອາດໃຫ້ກາຍເປັນຂໍ້ຄວາມທຳມະດາ (Markdown).</em></li>
+                            <li><strong>ຂັ້ນຕອນທີ 2 - ການຕັດຍ່ອຍ (Chunking):</strong> ເອກະສານຍາວຈະຖືກຕັດເປັນວັກນ້ອຍໆ ເພື່ອໃຫ້ AI ອ່ານງ່າຍ. <br><em>👉 ຕົວຢ່າງ: ບົດທີ່ຍາວ 5 ໜ້າກ່ຽວກັບ "ລະບຽບຫໍພັກ" ຈະຖືກຕັດເປັນ 20 ວັກ (ແຕ່ລະວັກ 5-7 ປະໂຫຍກ). ນີ້ຊ່ວຍໃຫ້ AI ຊອກຫາຈຸດສຳຄັນໄດ້ໂດຍບໍ່ມີການໂຫຼດຫຼາຍເກີນໄປ.</em></li>
+                            <li><strong>ຂັ້ນຕອນທີ 3 - ການແປອັດຕະໂນມັດເບື້ອງຫຼັງ:</strong> ແທນທີ່ຈະໃຫ້ AI ແປທຸກຄັ້ງທີ່ນັກສຶກສາຖາມ (ເຮັດໃຫ້ຊ້າ), ລະບົບມີ Background Tasks ທີ່ແປເນື້ອຫາທັງໝົດເປັນພາສາອັງກິດ/ລາວ, ບັນທຶກລົງໃນ ຖານຂໍ້ມູນ (PostgreSQL). <br><em>👉 ຕົວຢ່າງ: "ເວລາປິດຫໍພັກ" ຈະຖືກແປຢ່າງງຽບໆ ແລະ ບັນທຶກໄວ້ໃນ Database ລ່ວງໜ້າ. ເຮັດໃຫ້ນັກສຶກສາສາມາດອ່ານພາສາລາວໄດ້ທັນທີ.</em></li>
+                            <li><strong>ຂັ້ນຕອນທີ 4 - ການສ້າງ Vector (Embedding):</strong> ຂໍ້ຄວາມ <em>ພາສາຫວຽດນາມ</em> ຈະຖືກປ່ຽນເປັນຕົວເລກມາຕຣິກ ແລະ ບັນທຶກລົງໃນ ຖານຂໍ້ມູນ Vector (Qdrant). <br><em>👉 ຕົວຢ່າງ: ຄຳວ່າ "ປິດເວລາ 23 ໂມງ" ຈະຖືກປ່ຽນເປັນຕົວເລກ <code>[0.12, -0.45, ...]</code> ເພື່ອໃຫ້ຄອມພິວເຕີເຂົ້າໃຈ "ຄວາມໝາຍຂອງເວລາ".</em></li>
+                        </ol>
+                    </div>
+                    <div class="border rounded-lg p-6 bg-slate-50 mb-10 overflow-x-auto">
+                        <div class="mermaid">
+                        graph TD
+                            A["Admin ອັບໂຫຼດ PDF/Word"] --> B["MarkItDown: ປ່ຽນເປັນ Markdown ພາສາຫວຽດ"]
+                            B --> C{"Background Tasks"}
+                            
+                            C -->|"ໜ້າທີ່ 1: ແປທັງໝົດ"| D["Google Translator"]
+                            D --> E["ສ້າງສະບັບພາສາອັງກິດ ແລະ ລາວ"]
+                            E --> F[("ຖານຂໍ້ມູນ PostgreSQL: ບັນທຶກຄູ່ມືຫຼາຍພາສາ")]
+                            
+                            C -->|"ໜ້າທີ່ 2: ສ້າງ Vector"| G["Chunking: ຕັດເນື້ອຫາເປັນສ່ວນນ້ອຍໆ"]
+                            G --> H["Embedding Model"]
+                            H --> I[("ຖານຂໍ້ມູນ Vector Qdrant: ບັນທຶກ Vector ພາສາຫວຽດ 100%")]
+                            
+                            classDef db fill:#f9f0ff,stroke:#d8b4e2,stroke-width:2px;
+                            classDef ai fill:#e1f5fe,stroke:#81d4fa,stroke-width:2px;
+                            class I,F db;
+                            class H,D ai;
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Luồng 2 - Tiếng Việt -->
+                <div class="lang-vi">
+                    <h3 class="font-bold text-lg text-slate-800 mb-3 text-center">Luồng 2: Thực thi Trả lời Câu hỏi (Execution & Reasoning Pipeline)</h3>
+                    <div class="prose max-w-none text-slate-600 mb-6">
+                        <p>Luồng này mô tả nghiệp vụ khi một sinh viên mở App lên và nhắn tin hỏi Chatbot:</p>
+                        <ol>
+                            <li><strong>Bước 1 - Chốt chặn Dịch thuật:</strong> Sinh viên nhắn tin bằng ngoại ngữ, API chặn lại để nhận dạng ngôn ngữ và dịch sang tiếng Việt. <br><em>👉 Ví dụ: Sinh viên Lào gõ "ຂ້ອຍຈະຈ່າຍຄ່າຮຽນຢູ່ໃສ?". Hệ thống bắt được tiếng Lào và lập tức dịch sang tiếng Việt: "Tôi nộp học phí ở đâu?" để đồng bộ với VectorDB.</em></li>
+                            <li><strong>Bước 2 - Não bộ phân tích:</strong> Câu hỏi tiếng Việt được đưa cho Agent (Não bộ AI). Agent sẽ phân tích và quyết định gọi công cụ (Tool). <br><em>👉 Ví dụ: LLM phân tích từ "học phí", hiểu đây là thủ tục hành chính, không phải nội quy sách vở, nên quyết định không tìm trong VectorDB mà dùng Tool <code>search_department_info</code>.</em></li>
+                            <li><strong>Bước 3 - Truy xuất & Tính toán:</strong> Agent chạy lệnh tìm kiếm và lấy dữ liệu. <br><em>👉 Ví dụ: Tool gọi xuống Cơ sở dữ liệu (PostgreSQL) và trả về "Phòng Tài chính, Tòa A1, Tọa độ X, Y".</em></li>
+                            <li><strong>Bước 4 - Ép khuôn trả lời:</strong> Dù lấy được câu tiếng Việt, hệ thống dùng Hard Constraint bắt LLM phải trả lời bằng ngôn ngữ gốc. <br><em>👉 Ví dụ: LLM tự dịch lại thông tin và trả lời sinh viên: "ທ່ານສາມາດຈ່າຍຄ່າຮຽນໄດ້ທີ່ຫ້ອງການເງິນ, ອາຄານ A1..." kèm theo Nút chỉ đường trên bản đồ.</em></li>
+                        </ol>
+                    </div>
+                    <div class="border rounded-lg p-6 bg-slate-50 overflow-x-auto">
+                        <div class="mermaid">
+                        sequenceDiagram
+                            participant User as Sinh viên
+                            participant API as Chốt chặn FastAPI
+                            participant Agent as ReAct Agent
+                            participant Qdrant as Cơ sở dữ liệu Vector
+                            participant DB as Cơ sở dữ liệu SQL
+
+                            User->>API: Hỏi - Tôi nộp học phí ở đâu?
+                            Note over API: Phát hiện ngôn ngữ Lào. Dịch sang Tiếng Việt
+                            API->>Agent: Input - Tôi nộp học phí ở đâu? (Yêu cầu trả lời tiếng Lào)
+                            
+                            Note over Agent: Suy nghĩ - Tìm địa điểm nộp tiền. Cần gọi Tool search_department_info
+                            
+                            Agent->>Qdrant: Gọi Tool - search_department_info
+                            Qdrant-->>Agent: Kết quả - Phòng Tài chính, Tòa A1, Tọa độ 18.6, 105.6
+                            
+                            Note over Agent: Kiểm tra - Có dữ liệu Tiếng Việt. Bắt buộc dịch sang Tiếng Lào
+                            
+                            Agent-->>API: Trả lời - ທ່ານສາມາດຈ່າຍຄ່າຮຽນໄດ້ທີ່ຫ້ອງການເງິນ...
+                            API-->>User: Hiển thị trên App kèm Nút chỉ đường bản đồ
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Luồng 2 - Tiếng Lào -->
+                <div class="lang-lo hidden">
+                    <h3 class="font-bold text-lg text-slate-800 mb-3 text-center">ກະແສທີ 2: ການປະຕິບັດການຕອບຄຳຖາມ (Execution & Reasoning Pipeline)</h3>
+                    <div class="prose max-w-none text-slate-600 mb-6">
+                        <p>ກະແສນີ້ອະທິບາຍຂະບວນການເມື່ອນັກສຶກສາເປີດແອັບຂຶ້ນມາ ແລະ ສົ່ງຂໍ້ຄວາມຖາມ Chatbot:</p>
+                        <ol>
+                            <li><strong>ຂັ້ນຕອນທີ 1 - ຈຸດກວດກາການແປ:</strong> ນັກສຶກສາຖາມເປັນພາສາຕ່າງປະເທດ, API ຈະລະບຸພາສາ ແລະ ແປເປັນພາສາຫວຽດນາມ. <br><em>👉 ຕົວຢ່າງ: ນັກສຶກສາພິມ "ຂ້ອຍຈະຈ່າຍຄ່າຮຽນຢູ່ໃສ?". ລະບົບຮັບຮູ້ວ່າເປັນພາສາລາວ ແລະ ແປເປັນ "Tôi nộp học phí ở đâu?" ເພື່ອໃຫ້ເຂົ້າກັບ VectorDB.</em></li>
+                            <li><strong>ຂັ້ນຕອນທີ 2 - ສະໝອງວິເຄາະ:</strong> ຄຳຖາມພາສາຫວຽດນາມຖືກສົ່ງໃຫ້ Agent (ສະໝອງ AI). Agent ຈະວິເຄາະ ແລະ ຕັດສິນໃຈໃຊ້ເຄື່ອງມື. <br><em>👉 ຕົວຢ່າງ: LLM ວິເຄາະຄຳວ່າ "ຄ່າຮຽນ", ຮູ້ວ່ານີ້ແມ່ນຂັ້ນຕອນການບໍລິຫານ, ຈຶ່ງຕັດສິນໃຈບໍ່ຊອກຫາໃນ VectorDB ແຕ່ໃຊ້ Tool <code>search_department_info</code>.</em></li>
+                            <li><strong>ຂັ້ນຕອນທີ 3 - ດຶງຂໍ້ມູນ & ຄິດໄລ່:</strong> Agent ເອີ້ນຄຳສັ່ງຄົ້ນຫາ ແລະ ດຶງຂໍ້ມູນ. <br><em>👉 ຕົວຢ່າງ: Tool ເອີ້ນ ຖານຂໍ້ມູນ (PostgreSQL) ແລະ ສົ່ງຄືນຜົນໄດ້ຮັບ "ຫ້ອງການເງິນ, ອາຄານ A1, ພິກັດ X, Y".</em></li>
+                            <li><strong>ຂັ້ນຕອນທີ 4 - ບັງຄັບການຕອບ:</strong> ເຖິງວ່າໄດ້ຂໍ້ມູນເປັນພາສາຫວຽດນາມ, ລະບົບຈະບັງຄັບໃຫ້ LLM ຕອບເປັນພາສາເດີມ. <br><em>👉 ຕົວຢ່າງ: LLM ແປຂໍ້ມູນຄືນເປັນພາສາລາວ ແລະ ຕອບວ່າ: "ທ່ານສາມາດຈ່າຍຄ່າຮຽນໄດ້ທີ່ຫ້ອງການເງິນ, ອາຄານ A1..." ພ້ອມກັບປຸ່ມນຳທາງ.</em></li>
+                        </ol>
+                    </div>
+                    <div class="border rounded-lg p-6 bg-slate-50 overflow-x-auto">
+                        <div class="mermaid">
+                        sequenceDiagram
+                            participant User as ນັກສຶກສາ
+                            participant API as ຈຸດກວດກາ FastAPI
+                            participant Agent as ReAct Agent
+                            participant Qdrant as ຖານຂໍ້ມູນ Vector
+                            participant DB as ຖານຂໍ້ມູນ SQL
+
+                            User->>API: ຖາມ - ຂ້ອຍຈະຈ່າຍຄ່າຮຽນຢູ່ໃສ?
+                            Note over API: ກວດພົບພາສາລາວ. ແປເປັນພາສາຫວຽດ
+                            API->>Agent: Input - Tôi nộp học phí ở đâu? (ຕ້ອງຕອບເປັນພາສາລາວ)
+                            
+                            Note over Agent: ຄິດ - ຕ້ອງການຊອກຫາສະຖານທີ່ຈ່າຍເງິນ. ເອີ້ນໃຊ້ Tool search_department_info
+                            
+                            Agent->>Qdrant: ເອີ້ນໃຊ້ Tool - search_department_info
+                            Qdrant-->>Agent: ຜົນໄດ້ຮັບ - ຫ້ອງການເງິນ, ອາຄານ A1, ພິກັດ 18.6, 105.6
+                            
+                            Note over Agent: ກວດສອບ - ມີຂໍ້ມູນພາສາຫວຽດ. ຕ້ອງແປເປັນພາສາລາວ
+                            
+                            Agent-->>API: ຕອບ - ທ່ານສາມາດຈ່າຍຄ່າຮຽນໄດ້ທີ່ຫ້ອງການເງິນ...
+                            API-->>User: ສະແດງເທິງແອັບ ພ້ອມປຸ່ມນຳທາງແຜນທີ່
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Phần 5 -->
+            <section id="phan5" class="bg-blue-50 p-8 rounded-xl shadow-md border border-blue-200 scroll-mt-24">
+                <div class="flex items-center gap-3 mb-6 pb-4 border-b border-blue-200">
+                    <div class="w-10 h-10 bg-blue-600 text-white rounded-lg flex items-center justify-center font-bold text-xl">5</div>
+                    <h2 class="text-2xl font-bold text-blue-900 lang-vi">Ăn điểm Hội đồng: Ưu điểm Vượt trội của Kiến trúc</h2>
+                    <h2 class="text-2xl font-bold text-blue-900 lang-lo hidden">ຈຸດເດັ່ນຂອງລະບົບ: ຂໍ້ໄດ້ປຽບຂອງສະຖາປັດຕະຍະກຳ</h2>
+                </div>
+                
+                <div class="space-y-6 lang-vi">
+                    <div>
+                        <h3 class="font-bold text-xl text-blue-800 flex items-center gap-2">
+                            <span>🏆</span> 1. Agentic RAG vs Traditional RAG (RAG Truyền thống)
+                        </h3>
+                        <p class="text-slate-700 mt-2 mb-3">Hầu hết các đồ án hiện nay chỉ sử dụng RAG Truyền thống (Chỉ băm tài liệu ra và tìm kiếm Vector). Hệ thống của chúng ta sử dụng <strong>Agentic RAG (RAG kết hợp tác tử)</strong>.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-white p-4 rounded border border-red-200">
+                                <h4 class="font-bold text-red-600 mb-2">❌ RAG Truyền thống</h4>
+                                <p class="text-sm text-slate-600">Khi hỏi "Số điện thoại bảo vệ", nó sẽ tìm mù quáng các đoạn văn trong Sổ tay có chứa chữ "bảo vệ". Kết quả trả về thường là một đoạn văn bản luật lệ không liên quan, rất dễ gây ảo giác (Hallucination).</p>
+                            </div>
+                            <div class="bg-white p-4 rounded border border-green-400 ring-2 ring-green-100">
+                                <h4 class="font-bold text-green-700 mb-2">✅ Agentic RAG (VinhUni Guide)</h4>
+                                <p class="text-sm text-slate-600">Agent có "não bộ" (LLM Reasoning). Nó phân tích ý định, biết rằng "Số điện thoại" không nằm trong sổ tay mà nằm trong <strong>Cơ sở dữ liệu Khẩn cấp</strong>. Nó bỏ qua Cơ sở dữ liệu Vector (Qdrant), chủ động tự tạo lệnh SQL để gọi hàm <code>search_emergency_contacts</code>, lấy chính xác SĐT.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-blue-200">
+                        <h3 class="font-bold text-xl text-blue-800 flex items-center gap-2">
+                            <span>🚀</span> 2. Kiến trúc Query Translation (Tối ưu Đa ngôn ngữ)
+                        </h3>
+                        <p class="text-slate-700 mt-2 mb-3">Để hỗ trợ Tiếng Việt, Tiếng Anh và Tiếng Lào, thay vì tạo Vector và lưu trữ dữ liệu cho cả 3 ngôn ngữ (làm chi phí phần cứng và Cơ sở dữ liệu Vector phình to gấp 3 lần), chúng ta sử dụng <strong>Query Translation</strong>.</p>
+                        <ul class="list-disc pl-6 space-y-2 text-slate-700 bg-white p-5 rounded border border-blue-100">
+                            <li><strong>Tiết kiệm lưu trữ (Cost-efficient):</strong> Toàn bộ tri thức dạng Vector (Chunks) chỉ được lưu duy nhất bằng Tiếng Việt.</li>
+                            <li><strong>Nhanh và Thông minh:</strong> Khi có câu hỏi tiếng ngoại quốc, "Chốt chặn" API tự động dịch sang tiếng Việt để truy vấn độ chính xác cao nhất trên Cơ sở dữ liệu Vector (Qdrant). Sau đó, ép LLM đóng vai trò phiên dịch viên để trả lời ngược lại bằng ngôn ngữ gốc. Giúp trải nghiệm mượt mà không độ trễ.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="space-y-6 lang-lo hidden">
+                    <div>
+                        <h3 class="font-bold text-xl text-blue-800 flex items-center gap-2">
+                            <span>🏆</span> 1. Agentic RAG ທຽບກັບ Traditional RAG (RAG ແບບເກົ່າ)
+                        </h3>
+                        <p class="text-slate-700 mt-2 mb-3">ໂຄງການສ່ວນໃຫຍ່ໃນປະຈຸບັນໃຊ້ພຽງແຕ່ RAG ແບບເກົ່າ (ພຽງແຕ່ຕັດເອກະສານ ແລະ ຊອກຫາ Vector). ລະບົບຂອງພວກເຮົານຳໃຊ້ <strong>Agentic RAG (RAG ປະສົມປະສານຕົວແທນ)</strong>.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-white p-4 rounded border border-red-200">
+                                <h4 class="font-bold text-red-600 mb-2">❌ RAG ແບບເກົ່າ</h4>
+                                <p class="text-sm text-slate-600">ເມື່ອຖາມ "ເບີໂທລະສັບຜູ້ປົກປ້ອງ", ມັນຈະຊອກຫາແບບຕາບອດໃນບັນດາວັກຂອງປື້ມຄູ່ມືທີ່ມີຄໍາວ່າ "ຜູ້ປົກປ້ອງ". ຜົນໄດ້ຮັບມັກຈະເປັນຂໍ້ຄວາມທາງກົດຫມາຍທີ່ບໍ່ກ່ຽວຂ້ອງ, ງ່າຍຫຼາຍທີ່ຈະເຮັດໃຫ້ເກີດອາການພາບຫຼອນ (Hallucination).</p>
+                            </div>
+                            <div class="bg-white p-4 rounded border border-green-400 ring-2 ring-green-100">
+                                <h4 class="font-bold text-green-700 mb-2">✅ Agentic RAG (VinhUni Guide)</h4>
+                                <p class="text-sm text-slate-600">Agent ມີ "ສະຫມອງ" (LLM Reasoning). ມັນວິເຄາະຄວາມຕັ້ງໃຈ, ຮູ້ວ່າ "ເບີໂທລະສັບ" ບໍ່ໄດ້ຢູ່ໃນປື້ມຄູ່ມືແຕ່ຢູ່ໃນ <strong>ຖານຂໍ້ມູນສຸກເສີນ</strong>. ມັນຂ້າມ ຖານຂໍ້ມູນ Vector (Qdrant), ແລະສ້າງຄໍາສັ່ງ SQL ຢ່າງຕັ້ງໃຈເພື່ອເອີ້ນໃຊ້ຫນ້າທີ່ <code>search_emergency_contacts</code>, ດຶງເອົາເບີໂທລະສັບທີ່ຖືກຕ້ອງ.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-blue-200">
+                        <h3 class="font-bold text-xl text-blue-800 flex items-center gap-2">
+                            <span>🚀</span> 2. ໂຄງສ້າງ Query Translation (ເພີ່ມປະສິດທິພາບຫຼາຍພາສາ)
+                        </h3>
+                        <p class="text-slate-700 mt-2 mb-3">ເພື່ອສະໜັບສະໜູນພາສາຫວຽດນາມ, ອັງກິດ ແລະ ລາວ, ແທນທີ່ຈະສ້າງ Vector ແລະ ເກັບຂໍ້ມູນສຳລັບທັງ 3 ພາສາ (ເຊິ່ງເຮັດໃຫ້ຄ່າໃຊ້ຈ່າຍຮາດແວ ແລະ ຖານຂໍ້ມູນ Vector ເພີ່ມຂຶ້ນ 3 ເທົ່າ), ພວກເຮົາໃຊ້ <strong>Query Translation</strong>.</p>
+                        <ul class="list-disc pl-6 space-y-2 text-slate-700 bg-white p-5 rounded border border-blue-100">
+                            <li><strong>ປະຢັດຄ່າໃຊ້ຈ່າຍໃນການເກັບຮັກສາ (Cost-efficient):</strong> ຄວາມຮູ້ໃນຮູບແບບ Vector ທັງໝົດ (Chunks) ຖືກເກັບໄວ້ໃນພາສາຫວຽດນາມເທົ່ານັ້ນ.</li>
+                            <li><strong>ໄວ ແລະ ສະຫຼາດ:</strong> ເມື່ອມີຄຳຖາມເປັນພາສາຕ່າງປະເທດ, "ຈຸດກວດກາ" API ຈະແປເປັນພາສາຫວຽດນາມອັດຕະໂນມັດເພື່ອຄົ້ນຫາດ້ວຍຄວາມຖືກຕ້ອງສູງສຸດເທິງ ຖານຂໍ້ມູນ Vector (Qdrant). ຈາກນັ້ນ, ບັງຄັບໃຫ້ LLM ເຮັດໜ້າທີ່ເປັນນັກແປເພື່ອຕອບກັບໃນພາສາເດີມ. ຊ່ວຍໃຫ້ປະສົບການທີ່ລຽບງ່າຍໂດຍບໍ່ມີຄວາມລ່າຊ້າ.</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <footer class="bg-slate-900 text-slate-400 py-8 text-center mt-12">
+        <p class="lang-vi">Báo cáo Đồ án Tốt nghiệp - Hệ thống Sổ tay Sinh viên Vinh Uni</p>
+        <p class="lang-lo hidden">ລາຍງານໂຄງການຈົບຊັ້ນ - ລະບົບຄູ່ມືນັກສຶກສາ Vinh Uni</p>
+        <p class="text-sm mt-2 opacity-50">Tài liệu được sinh tự động bởi Antigravity AI Assistant</p>
+    </footer>
+
+    <!-- Script for Language Switching -->
+    <script>
+        function setLang(lang) {
+            const viElements = document.querySelectorAll('.lang-vi');
+            const loElements = document.querySelectorAll('.lang-lo');
+            const btnVi = document.getElementById('btn-vi');
+            const btnLo = document.getElementById('btn-lo');
+
+            if (lang === 'lo') {
+                viElements.forEach(el => el.classList.add('hidden'));
+                loElements.forEach(el => el.classList.remove('hidden'));
+                
+                btnLo.classList.add('bg-blue-100', 'text-blue-700');
+                btnLo.classList.remove('text-slate-600', 'hover:bg-slate-100');
+                
+                btnVi.classList.remove('bg-blue-100', 'text-blue-700');
+                btnVi.classList.add('text-slate-600', 'hover:bg-slate-100');
+            } else {
+                loElements.forEach(el => el.classList.add('hidden'));
+                viElements.forEach(el => el.classList.remove('hidden'));
+                
+                btnVi.classList.add('bg-blue-100', 'text-blue-700');
+                btnVi.classList.remove('text-slate-600', 'hover:bg-slate-100');
+                
+                btnLo.classList.remove('bg-blue-100', 'text-blue-700');
+                btnLo.classList.add('text-slate-600', 'hover:bg-slate-100');
+            }
+        }
+    </script>
+</body>
+</html>

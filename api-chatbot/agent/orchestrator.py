@@ -45,7 +45,7 @@ HƯỚNG DẪN DÙNG CÔNG CỤ (TOOL CALLING):
 7. `get_emergency_templates` — Mẫu tin nhắn khẩn cấp (báo mất đồ, gọi cấp cứu)."""
 
 
-async def run_agent(user_message: str, chat_history: list[dict], session_id: str) -> tuple[str, list[str]]:
+async def run_agent(user_message: str, chat_history: list[dict], session_id: str, original_message: str = None, detected_language: str = "vi") -> tuple[str, list[str]]:
     """
     Thực thi Agent với tool calling và trả về (câu trả lời, danh sách nguồn).
     """
@@ -65,6 +65,25 @@ async def run_agent(user_message: str, chat_history: list[dict], session_id: str
 
     current_year = datetime.datetime.now().year
     dynamic_system_prompt = SYSTEM_PROMPT + f"\nLưu ý thời gian thực: Năm nay là {current_year}."
+    
+    if detected_language != "vi" and original_message:
+        if detected_language == "lo":
+            lang_label = "Tiếng Lào (Lao language)"
+            lang_instruction = "Hãy tổng hợp câu trả lời đầy đủ, chi tiết, chính xác dựa trên tài liệu tra cứu được. Nếu bạn không thành thạo Tiếng Lào, hãy trả lời bằng Tiếng Việt (hệ thống sẽ tự động biên dịch sang Tiếng Lào chuẩn cho người dùng)."
+        elif detected_language == "en":
+            lang_label = "Tiếng Anh (English)"
+            lang_instruction = "BẠN BẮT BUỘC PHẢI TRẢ LỜI NGƯỜI DÙNG BẰNG TIẾNG ANH (English). Tuyệt đối không trả lời bằng tiếng Việt."
+        else:
+            lang_label = f"Ngôn ngữ mã '{detected_language}'"
+            lang_instruction = f"BẠN BẮT BUỘC PHẢI TRẢ LỜI NGƯỜI DÙNG BẰNG CHÍNH NGÔN NGỮ CỦA HỌ ({detected_language})."
+
+        dynamic_system_prompt += (
+            f"\n\n[HƯỚNG DẪN ĐA NGÔN NGỮ QUAN TRỌNG]:\n"
+            f"- Câu hỏi gốc của người dùng: '{original_message}' ({lang_label}).\n"
+            f"- Hệ thống đã dịch câu hỏi sang tiếng Việt: '{user_message}' để bạn tra cứu cơ sở dữ liệu tiếng Việt của trường bằng các công cụ.\n"
+            f"- {lang_instruction}\n"
+            f"- GIỮ NGUYÊN các Action Token `[Tọa độ: lat, lng]` hoặc số điện thoại trong câu trả lời nếu có để ứng dụng di động hiển thị nút dẫn đường và gọi điện."
+        )
 
     try:
         agent = create_react_agent(llm, tools, prompt=dynamic_system_prompt)
@@ -83,17 +102,31 @@ async def run_agent(user_message: str, chat_history: list[dict], session_id: str
 
     try:
         messages = langchain_history.copy()
-        logger.info(f"[Orchestrator] Bắt đầu astream. Prompt: {dynamic_system_prompt}")
+        agent_config = {"recursion_limit": 6}
+        logger.info(f"[Orchestrator] Bắt đầu astream với recursion_limit=6. Prompt: {dynamic_system_prompt}")
         
-        async for event in agent.astream({"messages": langchain_history}):
-            for node_name, node_output in event.items():
-                if "messages" in node_output:
-                    msgs = node_output["messages"]
-                    if not isinstance(msgs, list):
-                        msgs = [msgs]
-                    messages.extend(msgs)
-                                        
-        answer = messages[-1].content
+        try:
+            async for event in agent.astream({"messages": langchain_history}, config=agent_config):
+                for node_name, node_output in event.items():
+                    if "messages" in node_output:
+                        msgs = node_output["messages"]
+                        if not isinstance(msgs, list):
+                            msgs = [msgs]
+                        messages.extend(msgs)
+        except Exception as loop_err:
+            if "recursion" in str(loop_err).lower() or "limit" in str(loop_err).lower():
+                logger.warning(f"[Orchestrator] Đã chạm giới hạn tối đa 6 vòng lặp ReAct: {loop_err}")
+            else:
+                raise loop_err
+
+        # Lấy câu trả lời cuối cùng từ Assistant
+        answer = ""
+        for msg in reversed(messages):
+            if isinstance(msg, AIMessage) and msg.content:
+                answer = str(msg.content)
+                break
+        if not answer and messages:
+            answer = str(getattr(messages[-1], 'content', messages[-1]))
         
         sources = []
         import re

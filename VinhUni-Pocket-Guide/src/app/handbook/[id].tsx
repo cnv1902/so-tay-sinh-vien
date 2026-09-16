@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import Markdown from 'react-native-markdown-display';
 import { useHandbookDetail } from '../../features/handbook/useHandbook';
 import { HANDBOOK_CATEGORIES } from '../../types/document';
@@ -12,13 +13,20 @@ import { htmlToMarkdown } from '../../utils/htmlUtils';
 export default function HandbookDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { t, i18n } = useTranslation();
   const { document, isLoading, error } = useHandbookDetail(id as string);
+
+  const currentLocale = (i18n.language || 'vi').startsWith('en')
+    ? 'en-US'
+    : (i18n.language || 'vi').startsWith('lo')
+    ? 'lo-LA'
+    : 'vi-VN';
 
   if (isLoading) {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Đang nạp toàn văn tài liệu...</Text>
+        <Text style={styles.loadingText}>{t('handbook.loadingDoc')}</Text>
       </View>
     );
   }
@@ -27,9 +35,9 @@ export default function HandbookDetailScreen() {
     return (
       <View style={styles.centerContainer}>
         <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
-        <Text style={styles.errorText}>Không thể tải nội dung tài liệu.</Text>
+        <Text style={styles.errorText}>{t('handbook.errorDoc')}</Text>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backButtonText}>Quay lại</Text>
+          <Text style={styles.backButtonText}>{t('common.back')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -41,7 +49,11 @@ export default function HandbookDetailScreen() {
     icon: 'document-text-outline'
   };
 
-  const formattedDate = new Date(document.created_at).toLocaleDateString('vi-VN', {
+  const categoryLabel = document.doc_type
+    ? t(`handbook.categories.${document.doc_type}` as any, { defaultValue: categoryConfig.label })
+    : categoryConfig.label;
+
+  const formattedDate = new Date(document.created_at).toLocaleDateString(currentLocale, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric'
@@ -50,7 +62,7 @@ export default function HandbookDetailScreen() {
   // Markdown content
   const markdownContent = document.full_content 
     ? htmlToMarkdown(document.full_content)
-    : `### ${document.filename}\n\n*Tài liệu này chưa có nội dung toàn văn hoặc đang trong tiến trình xử lý.*`;
+    : `### ${document.filename}\n\n*${t('handbook.emptyDocContent')}*`;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -79,11 +91,11 @@ export default function HandbookDetailScreen() {
           <View style={styles.categoryRow}>
             <View style={styles.categoryBadge}>
               <Ionicons name={categoryConfig.icon as any} size={14} color={colors.primary} />
-              <Text style={styles.categoryBadgeText}>{categoryConfig.label}</Text>
+              <Text style={styles.categoryBadgeText}>{categoryLabel}</Text>
             </View>
             {document.year && (
               <View style={styles.yearBadge}>
-                <Text style={styles.yearBadgeText}>Năm {document.year}</Text>
+                <Text style={styles.yearBadgeText}>{t('handbook.yearPrefix')} {document.year}</Text>
               </View>
             )}
           </View>
@@ -93,11 +105,11 @@ export default function HandbookDetailScreen() {
           <View style={styles.metaDetailsRow}>
             <View style={styles.metaDetailItem}>
               <Ionicons name="time-outline" size={14} color={colors.textTertiary} />
-              <Text style={styles.metaDetailText}>Cập nhật: {formattedDate}</Text>
+              <Text style={styles.metaDetailText}>{t('common.updatedAt')}: {formattedDate}</Text>
             </View>
             <View style={styles.metaDetailItem}>
               <Ionicons name="checkmark-circle-outline" size={14} color="#10B981" />
-              <Text style={[styles.metaDetailText, { color: '#10B981', fontWeight: '600' }]}>Đã duyệt</Text>
+              <Text style={[styles.metaDetailText, { color: '#10B981', fontWeight: '600' }]}>{t('common.approved')}</Text>
             </View>
           </View>
         </View>

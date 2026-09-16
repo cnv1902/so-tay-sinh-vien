@@ -43,12 +43,12 @@ export default function PersonalContactModal({ visible, onClose }: Props) {
 
   const handleSave = () => {
     if (!name.trim()) {
-      Alert.alert(t('common.error'), 'Vui lòng nhập tên người thân.');
+      Alert.alert(t('common.error'), t('emergency.nameRequired'));
       return;
     }
     const cleanPhone = phone.trim().replace(/[^0-9+]/g, '');
     if (cleanPhone.length < 8) {
-      Alert.alert(t('common.error'), 'Vui lòng nhập số điện thoại hợp lệ.');
+      Alert.alert(t('common.error'), t('emergency.phoneRequired'));
       return;
     }
 
@@ -61,12 +61,12 @@ export default function PersonalContactModal({ visible, onClose }: Props) {
 
   const handleDelete = () => {
     Alert.alert(
-      'Xác nhận xóa',
-      'Bạn có chắc chắn muốn xóa liên hệ khẩn cấp này?',
+      t('common.deleteConfirmTitle'),
+      t('emergency.deleteConfirm'),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Xóa',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: () => {
             clearContact();
@@ -111,7 +111,7 @@ export default function PersonalContactModal({ visible, onClose }: Props) {
 
           {/* Form */}
           <View style={styles.form}>
-            <Text style={styles.label}>Tên người thân</Text>
+            <Text style={styles.label}>{t('emergency.nameLabel')}</Text>
             <View style={styles.inputBox}>
               <Ionicons name="person-outline" size={18} color={colors.textSecondary} />
               <TextInput
@@ -124,7 +124,7 @@ export default function PersonalContactModal({ visible, onClose }: Props) {
               />
             </View>
 
-            <Text style={[styles.label, { marginTop: spacing.md }]}>Số điện thoại</Text>
+            <Text style={[styles.label, { marginTop: spacing.md }]}>{t('emergency.phoneLabel')}</Text>
             <View style={styles.inputBox}>
               <Ionicons name="call-outline" size={18} color={colors.textSecondary} />
               <TextInput

@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { colors, radius, spacing, typography, shadows } from '../../design';
 import { HANDBOOK_CATEGORIES, HandbookDocument } from '../../types/document';
 
@@ -27,7 +28,14 @@ const CATEGORY_COLORS: Record<string, { icon: string; bg: string; border: string
 
 export default function HandbookCard({ document, index = 0 }: Props) {
   const router = useRouter();
+  const { t, i18n } = useTranslation();
   const scale = useRef(new Animated.Value(1)).current;
+
+  const currentLocale = (i18n.language || 'vi').startsWith('en')
+    ? 'en-US'
+    : (i18n.language || 'vi').startsWith('lo')
+    ? 'lo-LA'
+    : 'vi-VN';
 
   const categoryConfig = HANDBOOK_CATEGORIES.find(c => c.id === document.doc_type) || {
     id: 'khac',
@@ -35,9 +43,12 @@ export default function HandbookCard({ document, index = 0 }: Props) {
     icon: 'document-text-outline',
   };
 
+  const categoryLabel = document.doc_type
+    ? t(`handbook.categories.${document.doc_type}` as any, { defaultValue: categoryConfig.label })
+    : categoryConfig.label;
+
   const docType = (document.doc_type || 'khac') as keyof typeof CATEGORY_COLORS;
   const colorSet = CATEGORY_COLORS[docType] ?? CATEGORY_COLORS['khac'];
-
 
   const handlePress = () => router.push(`/handbook/${document.id}`);
 
@@ -46,7 +57,7 @@ export default function HandbookCard({ document, index = 0 }: Props) {
   const pressOut = () =>
     Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 40 }).start();
 
-  const formattedDate = new Date(document.created_at).toLocaleDateString('vi-VN', {
+  const formattedDate = new Date(document.created_at).toLocaleDateString(currentLocale, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -72,7 +83,7 @@ export default function HandbookCard({ document, index = 0 }: Props) {
           <View style={styles.tagRow}>
             <View style={[styles.categoryTag, { backgroundColor: colorSet.bg, borderColor: colorSet.border }]}>
               <Text style={[styles.categoryText, { color: colorSet.icon }]}>
-                {categoryConfig.label.toUpperCase()}
+                {categoryLabel.toUpperCase()}
               </Text>
             </View>
             {document.year && (
@@ -95,7 +106,7 @@ export default function HandbookCard({ document, index = 0 }: Props) {
               <Text style={styles.dateText}>{formattedDate}</Text>
             </View>
             <View style={styles.readMore}>
-              <Text style={styles.readMoreText}>Đọc tài liệu</Text>
+              <Text style={styles.readMoreText}>{t('handbook.readDoc')}</Text>
               <Ionicons name="arrow-forward-circle" size={16} color={colors.primary} />
             </View>
           </View>

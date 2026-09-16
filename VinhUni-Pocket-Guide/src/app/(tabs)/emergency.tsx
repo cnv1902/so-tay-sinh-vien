@@ -82,7 +82,7 @@ export default function EmergencyScreen() {
 
   const handleCall = (phoneNumber: string) => {
     Linking.openURL(`tel:${phoneNumber}`).catch(() => {
-      Alert.alert(t('common.error'), 'Không thể khởi chạy cuộc gọi trên thiết bị này.');
+      Alert.alert(t('common.error'), t('common.cannotMakeCall'));
     });
   };
 
@@ -107,7 +107,7 @@ export default function EmergencyScreen() {
       const coords = `${location.coords.latitude}, ${location.coords.longitude}`;
       const googleMapsLink = `https://maps.google.com/?q=${coords}`;
       
-      const messageBody = `[SOS KHẨN CẤP] Mình đang cần hỗ trợ khẩn cấp tại ĐH Vinh! Vị trí hiện tại của mình: ${googleMapsLink}`;
+      const messageBody = t('emergency.sosSmsBody', { url: googleMapsLink });
       
       const targetPhone = contact.phone.replace(/[^0-9+]/g, '');
       const smsUrl = Platform.OS === 'ios'
@@ -116,7 +116,7 @@ export default function EmergencyScreen() {
 
       Linking.openURL(smsUrl);
     } catch (error) {
-      Alert.alert(t('common.error'), 'Không thể lấy vị trí hiện tại.');
+      Alert.alert(t('common.error'), t('common.locationError'));
     } finally {
       setSending(false);
     }
@@ -223,12 +223,12 @@ export default function EmergencyScreen() {
                       <Text style={styles.cardTitle}>{item.name}</Text>
                       {item.isPersonal && (
                         <View style={styles.personalBadge}>
-                          <Text style={styles.personalBadgeText}>Cá nhân</Text>
+                          <Text style={styles.personalBadgeText}>{t('common.personal')}</Text>
                         </View>
                       )}
                     </View>
                     <Text style={styles.cardSubtitle}>
-                      {item.description || item.ward || 'Liên hệ hỗ trợ 24/7'}
+                      {item.description || item.ward || t('emergency.support247')}
                     </Text>
                   </View>
                   <View style={[styles.callBadge, item.isPersonal && { backgroundColor: '#10B981' }]}>

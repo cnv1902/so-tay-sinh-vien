@@ -90,8 +90,8 @@ export default function CalendarScreen() {
           <Ionicons name="calendar" size={14} color={colors.primary} />
           <Text style={styles.eventCountText}>
             {selectedDateEvents.length > 0
-              ? `${selectedDateEvents.length} sự kiện vào ngày ${selectedDate}/${month}`
-              : `Ngày ${selectedDate}/${month} không có sự kiện`}
+              ? t('calendar.eventsCountDay', { count: selectedDateEvents.length, date: `${selectedDate}/${month}` })
+              : t('calendar.noEventsCountDay', { date: `${selectedDate}/${month}` })}
           </Text>
         </View>
       )}
@@ -101,14 +101,14 @@ export default function CalendarScreen() {
         {loading ? (
           <View style={styles.centerContent}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Đang tải lịch...</Text>
+            <Text style={styles.loadingText}>{t('common.loading')}</Text>
           </View>
         ) : error ? (
           <View style={styles.centerContent}>
             <View style={styles.emptyIconBox}>
               <Ionicons name="alert-circle-outline" size={32} color={colors.danger} />
             </View>
-            <Text style={styles.emptyTitle}>Không thể tải dữ liệu</Text>
+            <Text style={styles.emptyTitle}>{t('common.error')}</Text>
             <Text style={styles.emptySubtitle}>{error}</Text>
           </View>
         ) : selectedDateEvents.length === 0 ? (
@@ -116,7 +116,7 @@ export default function CalendarScreen() {
             <View style={styles.emptyIconBox}>
               <Ionicons name="calendar-clear-outline" size={32} color={colors.textTertiary} />
             </View>
-            <Text style={styles.emptyText}>Không có sự kiện trong ngày này</Text>
+            <Text style={styles.emptyText}>{t('calendar.noEventsDay')}</Text>
           </View>
         ) : (
           <FlatList

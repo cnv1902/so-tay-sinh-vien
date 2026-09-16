@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import type { CalendarEvent } from '../../types/calendar';
 import { colors, radius, spacing, shadows, typography } from '../../design';
 
@@ -25,13 +26,20 @@ const getCategoryColor = (category: string) => {
 };
 
 export default function CalendarEventCard({ event }: Props) {
+  const { t, i18n } = useTranslation();
+  const currentLocale = (i18n.language || 'vi').startsWith('en')
+    ? 'en-US'
+    : (i18n.language || 'vi').startsWith('lo')
+    ? 'lo-LA'
+    : 'vi-VN';
+
   const categoryColor = getCategoryColor(event.category);
   
   // Parse time
   const startDate = new Date(event.start_time);
   const timeString = event.is_all_day 
-    ? 'Cả ngày' 
-    : startDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    ? t('calendar.allDay')
+    : startDate.toLocaleTimeString(currentLocale, { hour: '2-digit', minute: '2-digit' });
 
   return (
     <View style={styles.container}>
@@ -64,7 +72,7 @@ export default function CalendarEventCard({ event }: Props) {
             <View style={styles.detailItem}>
               <Ionicons name="bookmark-outline" size={16} color={colors.textSecondary} />
               <Text style={[styles.detailText, { color: categoryColor, fontWeight: '600' }]}>
-                {event.category || 'Sự kiện'}
+                {event.category || t('calendar.eventTypeEvent')}
               </Text>
             </View>
           </View>

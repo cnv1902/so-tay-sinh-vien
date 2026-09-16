@@ -26,6 +26,7 @@ from langchain_core.documents import Document
 
 from db.connection import AsyncSessionLocal
 from db.models import UploadedDocument, DocumentChunk
+from indexing.translator import translate_to_en_and_lao
 
 logger = logging.getLogger(__name__)
 
@@ -169,6 +170,11 @@ async def process_document(doc_id: int, file_path: str, year: int, doc_type: str
         
         logger.info(f"[Parser] Document {doc_id}: tổng {len(all_chunks)} chunks.")
 
+        # Dịch toàn bộ văn bản và tên tài liệu sang EN và LAO
+        logger.info(f"[Parser] Dịch tài liệu và tiêu đề sang EN và LAO (Background thread)...")
+        md_content_en, md_content_lao = await asyncio.to_thread(translate_to_en_and_lao, md_content)
+        fn_en, fn_lao = await asyncio.to_thread(translate_to_en_and_lao, filename)
+
         # Lưu vào PostgreSQL
         async with AsyncSessionLocal() as db:
             doc = await db.get(UploadedDocument, doc_id)
@@ -185,7 +191,11 @@ async def process_document(doc_id: int, file_path: str, year: int, doc_type: str
                 )
                 db.add(db_chunk)
 
+            doc.filename_en = fn_en
+            doc.filename_lao = fn_lao
             doc.full_content = md_content
+            doc.full_content_en = md_content_en
+            doc.full_content_lao = md_content_lao
             doc.status = "pending_review"
             await db.commit()
             logger.info(f"[Parser] Đã lưu full_content và tạo {len(all_chunks)} chunks cho document {doc_id}. Chờ duyệt.")

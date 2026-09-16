@@ -6,18 +6,28 @@ import {
   TouchableOpacity,
   TextInput,
   Keyboard,
+  ScrollView,
+  Animated,
+  PanResponder,
+  Dimensions,
 } from "react-native";
-import BottomSheet, {
-  BottomSheetView,
-  BottomSheetFlatList,
-} from "@gorhom/bottom-sheet";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { colors, radius, spacing, typography, shadows } from "../../design";
+import { colors } from "../../design";
 import type { Location } from "../../types/location";
 import LocationItem from "./LocationItem";
 
-type BottomSheetState = "search" | "detail" | "routing";
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+// Các mức chiều cao (snap points) tính theo px thực tế
+const SNAP_SEARCH_COLLAPSED = Math.round(SCREEN_HEIGHT * 0.32); // Hiện ô tìm kiếm + 2-3 kết quả
+const SNAP_SEARCH_EXPANDED = Math.round(SCREEN_HEIGHT * 0.82);  // Mở rộng gần hết màn hình
+const SNAP_DETAIL = Math.round(SCREEN_HEIGHT * 0.45);          // Khung thông tin chi tiết
+const SNAP_ROUTING_COLLAPSED = Math.round(SCREEN_HEIGHT * 0.36);// Khung chọn 2 điểm đi/đến
+const SNAP_ROUTING_EXPANDED = Math.round(SCREEN_HEIGHT * 0.78); // Khi đang gõ tìm điểm đến
+const SNAP_NAVIGATING = 92;                                    // Thanh điều hướng thu gọn khi đang đi
+
+type SheetState = "search" | "detail" | "routing";
 
 interface Props {
   locations: Location[];
@@ -39,198 +49,284 @@ export default function MapSmartSheet({
   isNavigating = false,
 }: Props) {
   const { t } = useTranslation();
-  const bottomSheetRef = useRef<BottomSheet>(null);
-  const [sheetState, setSheetState] = useState<BottomSheetState>("search");
-
-  // Search state
+  const [sheetState, setSheetState] = useState<SheetState>("search");
   const [searchQuery, setSearchQuery] = useState("");
-
-  // Routing state
-  const [routingStart, setRoutingStart] = useState<Location | "USER_LOCATION">(
-    "USER_LOCATION",
-  );
+  const [routingStart, setRoutingStart] = useState<Location | "USER_LOCATION">("USER_LOCATION");
   const [routingEnd, setRoutingEnd] = useState<Location | null>(null);
-  const [activeRoutingInput, setActiveRoutingInput] = useState<
-    "start" | "end" | null
-  >(null);
-  const [routingSearchText, setRoutingSearchText] = useState("");
+  const [activeInput, setActiveInput] = useState<"start" | "end" | null>(null);
+  const [routingSearch, setRoutingSearch] = useState("");
+  const [isExpanded, setIsExpanded] = useState(false);
 
-  // Computed snap points based on state
-  const snapPoints = useMemo(() => {
-    switch (sheetState) {
-      case "search":
-        return ["15%", "80%"]; // 15% is just the search bar
-      case "detail":
-        return ["38%", "65%"];
-      case "routing":
-        return ["25%", "60%"];
-      default:
-        return ["15%", "80%"];
-    }
-  }, [sheetState]);
+  // Animated Height cho Bottom Sheet thuần React Native (chạy mượt 60fps, 100% tương thích)
+  const currentHeightRef = useRef(SNAP_SEARCH_COLLAPSED);
+  const animatedHeight = useRef(new Animated.Value(SNAP_SEARCH_COLLAPSED)).current;
 
-  // Sync external props to internal sheet state
-  useEffect(() => {
-    if (selectedLocation) {
-      setSheetState("detail");
-      // Always snap to first point in new state
-      bottomSheetRef.current?.snapToIndex(0);
-    } else {
-      // If we are not in routing mode, go back to search
-      if (sheetState === "detail") {
-        setSheetState("search");
-        bottomSheetRef.current?.snapToIndex(0);
-      }
-    }
-  }, [selectedLocation]);
-
-  // Handle Search Input Focus
-  const handleSearchFocus = () => {
-    bottomSheetRef.current?.snapToIndex(1); // expand to 80%
+  // Hàm animate chuyển độ cao
+  const animateToHeight = (targetHeight: number) => {
+    currentHeightRef.current = targetHeight;
+    Animated.spring(animatedHeight, {
+      toValue: targetHeight,
+      useNativeDriver: false,
+      bounciness: 4,
+      speed: 14,
+    }).start();
   };
 
-  const filteredLocations = useMemo(() => {
+  // Đồng bộ độ cao khi đổi trạng thái (Navigating / Search / Detail / Routing)
+  useEffect(() => {
+    if (isNavigating) {
+      setIsExpanded(false);
+      animateToHeight(SNAP_NAVIGATING);
+    } else if (selectedLocation) {
+      setSheetState("detail");
+      setIsExpanded(false);
+      animateToHeight(SNAP_DETAIL);
+    } else if (sheetState === "detail") {
+      setSheetState("search");
+      setIsExpanded(false);
+      animateToHeight(SNAP_SEARCH_COLLAPSED);
+    }
+  }, [isNavigating, selectedLocation]);
+
+  // Bộ lọc địa điểm tìm kiếm
+  const filteredLocs = useMemo(() => {
     if (!searchQuery.trim()) return locations;
-    const lowerQ = searchQuery.toLowerCase();
+    const q = searchQuery.toLowerCase();
     return locations.filter(
       (l) =>
-        l.name.toLowerCase().includes(lowerQ) ||
-        (l.category && l.category.toLowerCase().includes(lowerQ)),
+        l.name.toLowerCase().includes(q) ||
+        (l.category && l.category.toLowerCase().includes(q)) ||
+        (l.purpose && l.purpose.toLowerCase().includes(q)) ||
+        (l.description && l.description.toLowerCase().includes(q))
     );
   }, [searchQuery, locations]);
 
-  // Lọc địa điểm khi đang chọn routing input
-  const routingFilteredLocations = useMemo(() => {
-    if (!routingSearchText.trim()) return locations;
-    const q = routingSearchText.toLowerCase();
-    return locations.filter((l) => l.name.toLowerCase().includes(q));
-  }, [routingSearchText, locations]);
+  // Bộ lọc khi tìm điểm đi / điểm đến trong phần Routing
+  const routingLocs = useMemo(() => {
+    if (!routingSearch.trim()) return locations;
+    const q = routingSearch.toLowerCase();
+    return locations.filter(
+      (l) =>
+        l.name.toLowerCase().includes(q) ||
+        (l.purpose && l.purpose.toLowerCase().includes(q))
+    );
+  }, [routingSearch, locations]);
 
-  // Handlers
-  const handleSelectSearchLocation = (loc: Location) => {
+  // Xử lý cử chỉ vuốt kéo tay lên/xuống (PanResponder)
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => !isNavigating,
+        onMoveShouldSetPanResponder: (_, gestureState) => !isNavigating && Math.abs(gestureState.dy) > 5,
+        onPanResponderGrant: () => {
+          // Lưu vị trí trước khi kéo
+        },
+        onPanResponderMove: (_, gestureState) => {
+          if (isNavigating) return;
+          const newH = currentHeightRef.current - gestureState.dy;
+          const minH = sheetState === "detail" ? SNAP_DETAIL : SNAP_SEARCH_COLLAPSED;
+          const maxH = sheetState === "detail" ? SNAP_SEARCH_EXPANDED : SNAP_SEARCH_EXPANDED;
+          if (newH >= minH - 40 && newH <= maxH + 40) {
+            animatedHeight.setValue(newH);
+          }
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          if (isNavigating) return;
+          if (sheetState === "detail") {
+            // Khi ở màn hình Detail
+            if (gestureState.dy > 60) {
+              onSelectLocation(null);
+            } else {
+              animateToHeight(SNAP_DETAIL);
+            }
+          } else {
+            // Khi ở Search hoặc Routing
+            if (gestureState.dy < -40 || gestureState.vy < -0.4) {
+              setIsExpanded(true);
+              animateToHeight(SNAP_SEARCH_EXPANDED);
+            } else if (gestureState.dy > 40 || gestureState.vy > 0.4) {
+              Keyboard.dismiss();
+              setIsExpanded(false);
+              animateToHeight(SNAP_SEARCH_COLLAPSED);
+            } else {
+              // Trở về mốc gần nhất
+              const target = isExpanded ? SNAP_SEARCH_EXPANDED : SNAP_SEARCH_COLLAPSED;
+              animateToHeight(target);
+            }
+          }
+        },
+      }),
+    [sheetState, isExpanded, isNavigating]
+  );
+
+  const selectLoc = (loc: Location) => {
     Keyboard.dismiss();
-    onSelectLocation(loc); // This will trigger useEffect above and change state to 'detail'
+    onSelectLocation(loc);
   };
 
-  const handleStartRouting = () => {
+  const startRouting = () => {
     setRoutingEnd(selectedLocation);
     setSheetState("routing");
-    bottomSheetRef.current?.snapToIndex(0);
-    if (selectedLocation) {
-      onDrawRoute("USER_LOCATION", selectedLocation);
-    }
+    setIsExpanded(false);
+    animateToHeight(SNAP_ROUTING_COLLAPSED);
+    if (selectedLocation) onDrawRoute("USER_LOCATION", selectedLocation);
   };
 
-  const handleCancelRouting = () => {
+  const cancelRouting = () => {
     onClearRoute();
     setSheetState("search");
     onSelectLocation(null);
     setSearchQuery("");
-    bottomSheetRef.current?.snapToIndex(0);
+    setActiveInput(null);
+    setIsExpanded(false);
+    animateToHeight(SNAP_SEARCH_COLLAPSED);
   };
 
-  const handleRoutingSearchSelect = (loc: Location | "USER_LOCATION") => {
+  const selectRouting = (loc: Location | "USER_LOCATION") => {
     Keyboard.dismiss();
-    setRoutingSearchText(""); // xóa text tìm kiếm sau khi chọn
-    if (activeRoutingInput === "start") {
-      setRoutingStart(loc);
-    } else {
-      setRoutingEnd(loc as Location);
-    }
-    setActiveRoutingInput(null);
-    bottomSheetRef.current?.snapToIndex(0);
-
-    const newStart = activeRoutingInput === "start" ? loc : routingStart;
-    const newEnd = activeRoutingInput === "end" ? loc : routingEnd;
-
-    if (newStart && newEnd && newEnd !== "USER_LOCATION") {
-      onDrawRoute(newStart, newEnd as Location);
-    }
+    setRoutingSearch("");
+    if (activeInput === "start") setRoutingStart(loc);
+    else setRoutingEnd(loc as Location);
+    const ns = activeInput === "start" ? loc : routingStart;
+    const ne = activeInput === "end" ? loc : routingEnd;
+    setActiveInput(null);
+    animateToHeight(SNAP_ROUTING_COLLAPSED);
+    if (ns && ne && ne !== "USER_LOCATION") onDrawRoute(ns, ne as Location);
   };
 
   return (
-    <BottomSheet
-      ref={bottomSheetRef}
-      index={0}
-      snapPoints={snapPoints}
-      keyboardBehavior="interactive"
-      backgroundStyle={styles.bottomSheetBackground}
-      handleIndicatorStyle={styles.handleIndicator}
-    >
-      <View style={styles.contentContainer}>
-        {/* --- STATE        {/* --- STATE: SEARCH --- */}
-        {sheetState === "search" && (
-          <>
-            <View style={styles.searchBarContainer}>
-              <Ionicons name="search" size={20} color={colors.textSecondary} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder={t("map.searchPlaceholder")}
-                placeholderTextColor={colors.textTertiary}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                onFocus={handleSearchFocus}
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery("")}>
-                  <Ionicons
-                    name="close-circle"
-                    size={20}
-                    color={colors.textTertiary}
-                  />
-                </TouchableOpacity>
-              )}
+    <Animated.View style={[s.sheet, { height: animatedHeight }]}>
+      {/* VÙNG TAY CẦM KÉO VUỐT — Kéo để mở rộng hoặc thu gọn */}
+      <View {...panResponder.panHandlers} style={s.handleArea}>
+        <View style={s.handleIndicator} />
+      </View>
+
+      <View style={s.bodyContainer}>
+        {/* ==================== TRẠNG THÁI DẪN ĐƯỜNG (NAVIGATING) ==================== */}
+        {isNavigating ? (
+          <View style={s.navigatingRow}>
+            <View style={s.navigatingIconBox}>
+              <Ionicons name="navigate" size={22} color="#10B981" />
             </View>
-            <BottomSheetFlatList
-              data={filteredLocations}
-              keyExtractor={(i) => i.id}
-              renderItem={({ item }) => (
-                <LocationItem
-                  location={item}
-                  onPress={() => handleSelectSearchLocation(item)}
+            <View style={{ flex: 1, marginRight: 8 }}>
+              <Text style={s.navigatingLabel}>{t("map.headingTo")}</Text>
+              <Text style={s.navigatingTitle} numberOfLines={1}>
+                {routingEnd?.name || selectedLocation?.name || t("map.routeTitle")}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={s.stopNavBtn}
+              onPress={() => {
+                onClearRoute();
+              }}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="stop-circle" size={18} color="#FFFFFF" style={{ marginRight: 4 }} />
+              <Text style={s.stopNavBtnText}>{t("map.stopNavigation")}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            {/* ==================== TRẠNG THÁI 1: TÌM KIẾM ==================== */}
+            {sheetState === "search" && (
+              <View style={{ flex: 1 }}>
+            {/* Thanh Search Bar nổi bật, tương phản cao */}
+            <View style={s.searchBarWrapper}>
+              <View style={s.searchBar}>
+                <Ionicons name="search" size={20} color="#94A3B8" />
+                <TextInput
+                  style={s.searchInput}
+                  placeholder={t("map.searchPlaceholder", "Tìm kiếm...")}
+                  placeholderTextColor="#94A3B8"
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  onFocus={() => {
+                    setIsExpanded(true);
+                    animateToHeight(SNAP_SEARCH_EXPANDED);
+                  }}
+                  returnKeyType="search"
+                  autoCorrect={false}
                 />
-              )}
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity
+                    onPress={() => setSearchQuery("")}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="close-circle" size={18} color="#94A3B8" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
+            {/* Danh sách địa điểm */}
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={s.scrollContent}
               keyboardShouldPersistTaps="handled"
-              contentContainerStyle={styles.listContent}
-            />
-          </>
+              showsVerticalScrollIndicator={false}
+            >
+              {filteredLocs.length === 0 ? (
+                <View style={s.empty}>
+                  <Ionicons name="search-outline" size={32} color="#94A3B8" />
+                  <Text style={s.emptyText}>
+                    {locations.length === 0
+                      ? t("common.loading")
+                      : t("common.emptyData")}
+                  </Text>
+                </View>
+              ) : (
+                filteredLocs.map((item) => (
+                  <LocationItem
+                    key={item.id}
+                    location={item}
+                    onPress={() => selectLoc(item)}
+                  />
+                ))
+              )}
+            </ScrollView>
+          </View>
         )}
 
-        {/* --- STATE: DETAIL --- */}
+        {/* ==================== TRẠNG THÁI 2: CHI TIẾT ĐỊA ĐIỂM ==================== */}
         {sheetState === "detail" && selectedLocation && (
-          <View style={styles.detailContainer}>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={s.detailScrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
             <TouchableOpacity
-              style={styles.closeBtn}
+              style={s.closeBtn}
               onPress={() => onSelectLocation(null)}
+              activeOpacity={0.7}
             >
               <Ionicons name="close" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
 
-            <View style={styles.detailHeader}>
-              <View style={styles.detailIconBox}>
-                <Ionicons name="location" size={26} color={colors.primary} />
+            <View style={s.detailHeader}>
+              <View style={s.detailIcon}>
+                <Ionicons name="location" size={24} color={colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.detailTitle} numberOfLines={2}>
+                <Text style={s.detailTitle} numberOfLines={2}>
                   {selectedLocation.name}
                 </Text>
                 {selectedLocation.phone && (
-                  <Text style={styles.detailCategory}>
+                  <Text style={s.detailMeta}>
                     📞 {selectedLocation.phone}
                   </Text>
                 )}
               </View>
             </View>
 
-            {/* Hộp hiển thị Mô tả */}
-            <View style={styles.descBox}>
+            <View style={s.descBox}>
               <Ionicons
                 name="information-circle-outline"
                 size={18}
                 color={colors.primary}
                 style={{ marginTop: 2 }}
               />
-              <Text style={styles.detailDesc} numberOfLines={4}>
+              <Text style={s.descText} numberOfLines={4}>
                 {selectedLocation.description ||
                   selectedLocation.purpose ||
                   t("common.emptyData")}
@@ -238,104 +334,89 @@ export default function MapSmartSheet({
             </View>
 
             <TouchableOpacity
-              style={styles.navigateBtn}
-              onPress={handleStartRouting}
+              style={s.navBtn}
+              onPress={startRouting}
+              activeOpacity={0.85}
             >
               <Ionicons name="navigate" size={20} color="#fff" />
-              <Text style={styles.navigateBtnText}>{t("home.exploreMap")}</Text>
+              <Text style={s.navBtnText}>{t("home.exploreMap")}</Text>
             </TouchableOpacity>
-          </View>
+          </ScrollView>
         )}
 
-        {/* --- STATE: ROUTING --- */}
+        {/* ==================== TRẠNG THÁI 3: DẪN ĐƯỜNG (ROUTING) ==================== */}
         {sheetState === "routing" && (
-          <View style={styles.routingContainer}>
-            {/* Header Routing */}
-            <View style={styles.routingHeader}>
+          <View style={{ flex: 1 }}>
+            <View style={s.routingHeader}>
               <View style={{ width: 40 }} />
-              <Text style={styles.routingTitle}>{t("map.routeTitle")}</Text>
-              <TouchableOpacity
-                onPress={handleCancelRouting}
-                style={styles.backBtn}
-              >
-                <Text
-                  style={{
-                    color: colors.primary,
-                    fontWeight: "600",
-                    fontSize: 16,
-                  }}
-                >
-                  {t("common.cancel")}
-                </Text>
+              <Text style={s.routingTitle}>{t("map.routeTitle")}</Text>
+              <TouchableOpacity onPress={cancelRouting}>
+                <Text style={s.cancelText}>{t("common.cancel")}</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Inputs */}
-            <View style={styles.routingInputsBox}>
-              <View style={styles.routingTimeline}>
+            <View style={s.routingBox}>
+              <View style={s.timeline}>
                 <Ionicons
                   name="ellipse-outline"
-                  size={16}
+                  size={14}
                   color={colors.textSecondary}
                 />
-                <View style={styles.timelineLine} />
-                <Ionicons name="location" size={18} color={colors.primary} />
+                <View style={s.timelineLine} />
+                <Ionicons name="location" size={16} color={colors.primary} />
               </View>
 
-              <View style={styles.routingInputs}>
-                {/* Ô nhập điểm xuất phát — TextInput thực để gõ lọc */}
+              <View style={{ flex: 1, gap: 8 }}>
                 <TextInput
                   style={[
-                    styles.routeInputItem,
-                    activeRoutingInput === "start" && styles.routeInputActive,
+                    s.routeInput,
+                    activeInput === "start" && s.routeInputActive,
                   ]}
                   placeholder={t("map.startPoint")}
-                  placeholderTextColor={colors.textTertiary}
+                  placeholderTextColor="#64748B"
                   value={
-                    activeRoutingInput === "start"
-                      ? routingSearchText
+                    activeInput === "start"
+                      ? routingSearch
                       : routingStart === "USER_LOCATION"
                         ? t("map.yourLocation")
-                        : routingStart?.name || ""
+                        : (routingStart as Location)?.name || ""
                   }
                   onFocus={() => {
-                    setActiveRoutingInput("start");
-                    setRoutingSearchText("");
-                    bottomSheetRef.current?.snapToIndex(1);
+                    setActiveInput("start");
+                    setRoutingSearch("");
+                    animateToHeight(SNAP_ROUTING_EXPANDED);
                   }}
-                  onChangeText={(t) => {
-                    setRoutingSearchText(t);
-                    setActiveRoutingInput("start");
+                  onChangeText={(v) => {
+                    setRoutingSearch(v);
+                    setActiveInput("start");
                   }}
                 />
-
-                {/* Ô nhập điểm đến — TextInput thực để gõ lọc */}
                 <TextInput
                   style={[
-                    styles.routeInputItem,
-                    activeRoutingInput === "end" && styles.routeInputActive,
+                    s.routeInput,
+                    activeInput === "end" && s.routeInputActive,
                   ]}
                   placeholder={t("map.destinationPoint")}
-                  placeholderTextColor={colors.textTertiary}
+                  placeholderTextColor="#64748B"
                   value={
-                    activeRoutingInput === "end"
-                      ? routingSearchText
+                    activeInput === "end"
+                      ? routingSearch
                       : routingEnd?.name || ""
                   }
                   onFocus={() => {
-                    setActiveRoutingInput("end");
-                    setRoutingSearchText("");
-                    bottomSheetRef.current?.snapToIndex(1);
+                    setActiveInput("end");
+                    setRoutingSearch("");
+                    animateToHeight(SNAP_ROUTING_EXPANDED);
                   }}
-                  onChangeText={(t) => {
-                    setRoutingSearchText(t);
-                    setActiveRoutingInput("end");
+                  onChangeText={(v) => {
+                    setRoutingSearch(v);
+                    setActiveInput("end");
                   }}
                 />
               </View>
 
               <TouchableOpacity
-                style={styles.swapBtn}
+                style={s.swapBtn}
                 onPress={() => {
                   if (routingStart !== "USER_LOCATION" && routingEnd) {
                     setRoutingStart(routingEnd);
@@ -352,252 +433,310 @@ export default function MapSmartSheet({
               </TouchableOpacity>
             </View>
 
-            {/* Nút Bắt đầu đi (Start Navigation) khi đã có điểm xuất phát và điểm đến */}
-            {routingStart && routingEnd && !activeRoutingInput && (
+            {/* Nút bắt đầu dẫn đường */}
+            {routingStart && routingEnd && !activeInput && (
               <TouchableOpacity
-                style={styles.startNavBtn}
+                style={s.startBtn}
                 onPress={() => {
                   if (onStartNavigation) onStartNavigation();
-                  bottomSheetRef.current?.collapse();
+                  animateToHeight(SNAP_NAVIGATING);
                 }}
-                activeOpacity={0.8}
+                activeOpacity={0.85}
               >
                 <Ionicons
                   name="navigate"
-                  size={20}
-                  color="#FFFFFF"
-                  style={{ marginRight: 8 }}
+                  size={18}
+                  color="#fff"
+                  style={{ marginRight: 6 }}
                 />
-                <Text style={styles.startNavBtnText}>
-                  {t("map.startNavigation")}
-                </Text>
+                <Text style={s.startBtnText}>{t("map.startNavigation")}</Text>
               </TouchableOpacity>
             )}
 
-            {/* Expanded Search for Routing — lọc theo text đang nhập */}
-            {activeRoutingInput && (
-              <BottomSheetFlatList
-                data={routingFilteredLocations}
-                keyExtractor={(i) => i.id}
-                ListHeaderComponent={
-                  activeRoutingInput === "start" ? (
-                    <LocationItem
-                      location={{
-                        id: "USER_LOCATION",
-                        name: t("map.yourLocation"),
-                        description: "GPS",
-                        coordinate: { latitude: 0, longitude: 0 },
-                        category: "other",
-                        isInsideCampus: true,
-                      }}
-                      onPress={() => handleRoutingSearchSelect("USER_LOCATION")}
-                      isGps
-                    />
-                  ) : null
-                }
-                renderItem={({ item }) => (
+            {/* Danh sách địa điểm chọn khi đang gõ vào ô điểm đi / điểm đến */}
+            {activeInput && (
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={s.scrollContent}
+                keyboardShouldPersistTaps="handled"
+              >
+                {activeInput === "start" && (
                   <LocationItem
-                    location={item}
-                    onPress={() => handleRoutingSearchSelect(item)}
+                    location={{
+                      id: "USER_LOCATION",
+                      name: t("map.yourLocation"),
+                      description: "GPS",
+                      coordinate: { latitude: 0, longitude: 0 },
+                      category: "other",
+                      isInsideCampus: true,
+                    }}
+                    onPress={() => selectRouting("USER_LOCATION")}
+                    isGps
                   />
                 )}
-                keyboardShouldPersistTaps="handled"
-                contentContainerStyle={styles.listContent}
-              />
+                {routingLocs.map((item) => (
+                  <LocationItem
+                    key={item.id}
+                    location={item}
+                    onPress={() => selectRouting(item)}
+                  />
+                ))}
+              </ScrollView>
             )}
           </View>
         )}
-      </View>
-    </BottomSheet>
+      </>
+    )}
+  </View>
+    </Animated.View>
   );
 }
 
-const styles = StyleSheet.create({
-  bottomSheetBackground: {
-    backgroundColor: "#ffffff",
-    borderRadius: radius.xl,
-    ...shadows.large,
+const s = StyleSheet.create({
+  sheet: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    elevation: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.16,
+    shadowRadius: 14,
+    zIndex: 99,
+  },
+  handleArea: {
+    width: "100%",
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
   handleIndicator: {
-    backgroundColor: "#CBD5E1",
-    width: 40,
+    width: 44,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#94A3B8",
   },
-  contentContainer: {
+  bodyContainer: {
     flex: 1,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: 16,
   },
-  // Search Styles
-  searchBarContainer: {
+  searchBarWrapper: {
+    marginBottom: 8,
+  },
+  // Ô tìm kiếm — viền xám mờ nhẹ, nền sáng tinh tế
+  searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F1F5F9",
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    paddingHorizontal: 14,
     height: 48,
-    marginBottom: spacing.md,
   },
   searchInput: {
     flex: 1,
-    marginLeft: spacing.sm,
-    fontSize: typography.size.md,
-    color: colors.textPrimary,
+    marginLeft: 10,
+    fontSize: 15,
+    color: "#0F172A",
+    height: 48,
   },
-  listContent: {
-    paddingBottom: spacing.xxl,
+  scrollContent: {
+    paddingBottom: 40,
   },
-  // Detail Styles
-  detailContainer: {
-    flex: 1,
+  empty: {
+    paddingVertical: 36,
+    alignItems: "center",
+    gap: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: "#64748B",
+    textAlign: "center",
+  },
+  detailScrollContent: {
+    paddingBottom: 30,
   },
   closeBtn: {
     position: "absolute",
     top: 0,
     right: 0,
     zIndex: 10,
-    padding: spacing.xs,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: "#F1F5F9",
-    borderRadius: radius.round,
+    alignItems: "center",
+    justifyContent: "center",
   },
   detailHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: spacing.sm,
-    marginBottom: spacing.md,
+    marginTop: 6,
+    marginBottom: 12,
     paddingRight: 40,
   },
-  detailIconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
+  detailIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: "#EBF0F7",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: spacing.md,
+    marginRight: 12,
   },
   detailTitle: {
-    fontSize: typography.size.lg,
+    fontSize: 16,
     fontWeight: "700",
-    color: colors.textPrimary,
+    color: "#0D1B2A",
   },
-  detailCategory: {
-    fontSize: typography.size.sm,
-    color: colors.textSecondary,
+  detailMeta: {
+    fontSize: 13,
+    color: "#4A6080",
     marginTop: 2,
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 4,
   },
   descBox: {
     flexDirection: "row",
     alignItems: "flex-start",
     backgroundColor: "#F8FAFC",
-    padding: spacing.md,
-    borderRadius: radius.md,
-    marginBottom: spacing.lg,
-    gap: spacing.sm,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 14,
+    gap: 8,
   },
-  detailDesc: {
+  descText: {
     flex: 1,
-    fontSize: typography.size.sm,
-    color: colors.textSecondary,
+    fontSize: 13,
+    color: "#4A6080",
     lineHeight: 20,
   },
-  navigateBtn: {
-    backgroundColor: colors.primary,
+  navBtn: {
+    backgroundColor: "#1E3A5F",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    height: 52,
-    borderRadius: radius.round,
-    ...shadows.medium,
+    height: 50,
+    borderRadius: 50,
+    gap: 8,
+    marginTop: 4,
   },
-  navigateBtnText: {
+  navBtnText: {
     color: "#fff",
-    fontSize: typography.size.md,
+    fontSize: 15,
     fontWeight: "700",
-    marginLeft: spacing.sm,
-  },
-  // Routing Styles
-  routingContainer: {
-    flex: 1,
   },
   routingHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: spacing.md,
-  },
-  backBtn: {
-    padding: spacing.xs,
+    marginBottom: 12,
   },
   routingTitle: {
-    fontSize: typography.size.lg,
+    fontSize: 16,
     fontWeight: "700",
-    color: colors.textPrimary,
+    color: "#0D1B2A",
   },
-  routingInputsBox: {
+  cancelText: {
+    color: "#1E3A5F",
+    fontWeight: "600",
+    fontSize: 15,
+  },
+  routingBox: {
     flexDirection: "row",
     backgroundColor: "#F8FAFC",
-    padding: spacing.md,
-    borderRadius: radius.lg,
+    padding: 12,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: spacing.md,
-  },
-  routingTimeline: {
+    borderColor: "#E2E8F0",
+    marginBottom: 12,
     alignItems: "center",
-    marginRight: spacing.md,
-    paddingTop: 14,
-    paddingBottom: 14,
+  },
+  timeline: {
+    alignItems: "center",
+    marginRight: 10,
+    height: 96,
+    justifyContent: "space-between",
   },
   timelineLine: {
     width: 2,
     flex: 1,
-    backgroundColor: colors.border,
+    backgroundColor: "#CBD5E1",
     marginVertical: 4,
   },
-  routingInputs: {
-    flex: 1,
-    justifyContent: "space-between",
-  },
-  routeInputItem: {
+  routeInput: {
     height: 44,
-    justifyContent: "center",
-    backgroundColor: "#ffffff",
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
-    borderWidth: 1,
-    borderColor: "transparent",
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1.5,
+    borderColor: "#E2E8F0",
+    color: "#0F172A",
+    fontSize: 14,
   },
   routeInputActive: {
-    borderColor: colors.primary,
-  },
-  routeInputText: {
-    fontSize: typography.size.md,
-    color: colors.textPrimary,
+    borderColor: "#1E3A5F",
+    backgroundColor: "#EBF0F7",
   },
   swapBtn: {
-    justifyContent: "center",
+    width: 32,
     alignItems: "center",
-    paddingHorizontal: spacing.xs,
-    marginLeft: spacing.sm,
+    justifyContent: "center",
+    marginLeft: 8,
   },
-  startNavBtn: {
+  startBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.primary,
+    backgroundColor: "#1E3A5F",
     paddingVertical: 14,
-    borderRadius: radius.lg,
-    marginTop: spacing.sm,
-    marginBottom: spacing.md,
-    ...shadows.medium,
+    borderRadius: 14,
+    marginBottom: 12,
   },
-  startNavBtnText: {
-    color: "#FFFFFF",
+  startBtnText: {
+    color: "#fff",
     fontSize: 15,
+    fontWeight: "700",
+  },
+  navigatingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingTop: 4,
+    paddingBottom: 8,
+  },
+  navigatingIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: "#ECFDF5",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  navigatingLabel: {
+    fontSize: 11,
+    color: "#64748B",
+    fontWeight: "500",
+  },
+  navigatingTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  stopNavBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#EF4444",
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 12,
+  },
+  stopNavBtnText: {
+    color: "#FFFFFF",
+    fontSize: 13,
     fontWeight: "700",
   },
 });

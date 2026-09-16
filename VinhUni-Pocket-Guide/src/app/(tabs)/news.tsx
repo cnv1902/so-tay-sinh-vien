@@ -78,8 +78,8 @@ export default function NewsScreen() {
             <View style={styles.emptyIconBox}>
               <Ionicons name="newspaper-outline" size={34} color={colors.textTertiary} />
             </View>
-            <Text style={styles.emptyTitle}>Chưa có bài viết</Text>
-            <Text style={styles.emptySubtitle}>Chưa có tin tức nào được đăng</Text>
+            <Text style={styles.emptyTitle}>{t('news.emptyNewsTitle')}</Text>
+            <Text style={styles.emptySubtitle}>{t('news.emptyNewsSubtitle')}</Text>
           </View>
         }
       />

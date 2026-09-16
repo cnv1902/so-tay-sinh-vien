@@ -1,8 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { API_BASE_URL } from '../../services/api';
 import type { HandbookDocument } from '../../types/document';
 
 export function useHandbookDocuments(docType?: string) {
+  const { i18n } = useTranslation();
+  const currentLang = (i18n.language || 'vi').substring(0, 2);
   const docTypeParam = docType && docType !== 'all' ? `&doc_type=${docType}` : '';
 
   const {
@@ -12,9 +15,9 @@ export function useHandbookDocuments(docType?: string) {
     refetch,
     isRefetching,
   } = useQuery<HandbookDocument[]>({
-    queryKey: ['handbook-documents', docType || 'all'],
+    queryKey: ['handbook-documents', docType || 'all', currentLang],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE_URL}/api/admin/documents?status=success${docTypeParam}`);
+      const res = await fetch(`${API_BASE_URL}/api/admin/documents?status=success${docTypeParam}&lang=${currentLang}`);
       if (!res.ok) {
         throw new Error('Không thể tải danh sách tài liệu');
       }
@@ -34,14 +37,17 @@ export function useHandbookDocuments(docType?: string) {
 }
 
 export function useHandbookDetail(id: string | number) {
+  const { i18n } = useTranslation();
+  const currentLang = (i18n.language || 'vi').substring(0, 2);
+
   const {
     data: document,
     isLoading,
     error,
   } = useQuery<HandbookDocument>({
-    queryKey: ['handbook-detail', id],
+    queryKey: ['handbook-detail', id, currentLang],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE_URL}/api/admin/documents/${id}`);
+      const res = await fetch(`${API_BASE_URL}/api/admin/documents/${id}?lang=${currentLang}`);
       if (!res.ok) {
         throw new Error('Không thể tải nội dung tài liệu');
       }

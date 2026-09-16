@@ -17,9 +17,9 @@ $PROJECT_ROOT = $PSScriptRoot
 if (-not $PROJECT_ROOT) { $PROJECT_ROOT = (Get-Location).Path }
 
 # ------------------------------------------------------------------------------
-# 1. KHOI DONG DOCKER COMPOSE
+# 1. KHOI DONG DOCKER DATABASE CONTAINERS
 # ------------------------------------------------------------------------------
-Write-Host "[1/3] Dang khoi dong Docker Containers (DB, Redis, Qdrant, Backend, Chatbot, Frontend)..." -ForegroundColor Green
+Write-Host "[1/3] Dang khoi dong Docker Database Containers (PostgreSQL, Redis, Qdrant)..." -ForegroundColor Green
 
 Set-Location $PROJECT_ROOT
 docker compose up -d
@@ -27,7 +27,7 @@ docker compose up -d
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[CANH BAO] Docker compose gap loi hoac Docker Desktop chua duoc bat!" -ForegroundColor Red
 } else {
-    Write-Host "[OK] Docker Containers da san sang va dang chay ngam!" -ForegroundColor Green
+    Write-Host "[OK] Docker Database (Postgres, Redis, Qdrant) da san sang va dang chay ngam!" -ForegroundColor Green
 }
 
 Write-Host ""
@@ -87,21 +87,23 @@ Start-Sleep -Seconds 2
 # ------------------------------------------------------------------------------
 Clear-Host
 Write-Host "==============================================================================" -ForegroundColor Cyan
-Write-Host "          TOAN BO HE THONG DA DUOC KHOI DONG THANH CONG!                      " -ForegroundColor Green
+Write-Host "          TOAN BO CO SO DU LIEU DOCKER DA DUOC KHOI DONG!                     " -ForegroundColor Green
 Write-Host "==============================================================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "DUONG DAN TRUY CAP CAC DICH VU:" -ForegroundColor Yellow
+Write-Host "CAC DICH VU DOCKER DATABASE DANG CHAY:" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "  * Giao dien Web Admin:         " -NoNewline; Write-Host "http://localhost:5173" -ForegroundColor Cyan
-Write-Host "  * Backend Core API Docs:       " -NoNewline; Write-Host "http://localhost:8000/docs" -ForegroundColor Cyan
-Write-Host "  * AI Chatbot & RAG API Docs:   " -NoNewline; Write-Host "http://localhost:8001/docs" -ForegroundColor Cyan
-Write-Host "  * Qdrant Vector DB Dashboard:  " -NoNewline; Write-Host "http://localhost:6333/dashboard" -ForegroundColor Cyan
-Write-Host "  * Ung dung Di dong Expo:       " -NoNewline; Write-Host "Dang build va chay tren Android Emulator" -ForegroundColor Green
+Write-Host "  * PostgreSQL Database:         " -NoNewline; Write-Host "localhost:5432 (chatbot_db)" -ForegroundColor Cyan
+Write-Host "  * Redis Cache:                 " -NoNewline; Write-Host "localhost:6379" -ForegroundColor Cyan
+Write-Host "  * Qdrant Vector DB:            " -NoNewline; Write-Host "http://localhost:6333/dashboard" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "HUONG DAN CHAY LOCAL DEV (HOST MACHINE):" -ForegroundColor Yellow
+Write-Host "  * Backend (Port 8000):         cd backend; uvicorn api.main:app --reload" -ForegroundColor White
+Write-Host "  * API Chatbot (Port 8001):     cd api-chatbot; uvicorn api.main:app --port 8001 --reload" -ForegroundColor White
+Write-Host "  * Frontend Admin (Port 5173):  cd frontend; npm run dev" -ForegroundColor White
 Write-Host ""
 Write-Host "------------------------------------------------------------------------------" -ForegroundColor DarkGray
 Write-Host "Goi y lenh huu ich:" -ForegroundColor Yellow
-Write-Host "   - Dung toan bo he thong:    docker compose down" -ForegroundColor White
-Write-Host "   - Xem logs Backend:         docker compose logs -f backend" -ForegroundColor White
-Write-Host "   - Xem logs AI Chatbot:      docker compose logs -f api-chatbot" -ForegroundColor White
+Write-Host "   - Dung Database Docker:     docker compose down" -ForegroundColor White
+Write-Host "   - Xem container dang chay:  docker compose ps" -ForegroundColor White
 Write-Host "==============================================================================" -ForegroundColor Cyan
 Write-Host ""

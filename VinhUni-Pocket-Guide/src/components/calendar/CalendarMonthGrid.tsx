@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors, radius, spacing, typography } from '../../design';
 import type { CalendarEvent } from '../../types/calendar';
 
@@ -11,8 +12,6 @@ interface Props {
   onSelectDate: (date: number) => void;
   events: CalendarEvent[];
 }
-
-const DAYS_OF_WEEK = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
 // Hàm phụ trợ xác định icon cho sự kiện trong ngày
 const getDayEventIndicator = (dayEvents: CalendarEvent[]) => {
@@ -41,6 +40,9 @@ const getDayEventIndicator = (dayEvents: CalendarEvent[]) => {
 };
 
 export default function CalendarMonthGrid({ year, month, selectedDate, onSelectDate, events }: Props) {
+  const { t } = useTranslation();
+  const daysOfWeek = (t('calendar.daysOfWeek', { returnObjects: true }) as string[]) || ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+
   // Tổng số ngày trong tháng
   const daysInMonth = new Date(year, month, 0).getDate();
   
@@ -120,8 +122,8 @@ export default function CalendarMonthGrid({ year, month, selectedDate, onSelectD
     <View style={styles.container}>
       {/* Header Row */}
       <View style={styles.headerRow}>
-        {DAYS_OF_WEEK.map((day, idx) => (
-          <View key={day} style={styles.headerCell}>
+        {daysOfWeek.map((day, idx) => (
+          <View key={idx} style={styles.headerCell}>
             <Text style={[
               styles.headerText, 
               (idx === 5 || idx === 6) ? styles.weekendHeaderText : null

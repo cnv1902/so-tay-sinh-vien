@@ -9,6 +9,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { useState } from 'react';
 
+import { useTranslation } from 'react-i18next';
+
 import {
   colors,
   radius,
@@ -16,27 +18,32 @@ import {
   spacing,
 } from '../../design';
 
-const categories = [
-  {
-    label: 'Tòa nhà',
-    icon: 'business-outline',
-  },
-  {
-    label: 'Ăn uống',
-    icon: 'restaurant-outline',
-  },
-  {
-    label: 'Xe buýt',
-    icon: 'bus-outline',
-  },
-  {
-    label: 'Y tế',
-    icon: 'medkit-outline',
-  },
-] as const;
-
 export default function MapCategories() {
-  const [activeCategory, setActiveCategory] = useState<string>('Tòa nhà');
+  const { t } = useTranslation();
+  const [activeCategory, setActiveCategory] = useState<string>('buildings');
+
+  const categories = [
+    {
+      id: 'buildings',
+      label: t('map.categories.buildings'),
+      icon: 'business-outline' as const,
+    },
+    {
+      id: 'food',
+      label: t('map.categories.food'),
+      icon: 'restaurant-outline' as const,
+    },
+    {
+      id: 'bus',
+      label: t('map.categories.bus'),
+      icon: 'bus-outline' as const,
+    },
+    {
+      id: 'medical',
+      label: t('map.categories.medical'),
+      icon: 'medkit-outline' as const,
+    },
+  ];
 
   return (
     <ScrollView
@@ -45,14 +52,14 @@ export default function MapCategories() {
       contentContainerStyle={styles.container}
     >
       {categories.map((category) => {
-        const isActive = activeCategory === category.label;
+        const isActive = activeCategory === category.id;
         
         return (
-          <View key={category.label} style={[styles.itemWrapper, isActive && styles.activeWrapper]}>
+          <View key={category.id} style={[styles.itemWrapper, isActive && styles.activeWrapper]}>
             <BlurView intensity={isActive ? 100 : 70} tint={isActive ? "dark" : "light"} style={styles.blurContainer}>
               <TouchableOpacity
                 style={styles.item}
-                onPress={() => setActiveCategory(category.label)}
+                onPress={() => setActiveCategory(category.id)}
                 activeOpacity={0.7}
               >
                 <Ionicons

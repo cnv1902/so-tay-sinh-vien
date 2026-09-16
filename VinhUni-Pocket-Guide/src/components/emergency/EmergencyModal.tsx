@@ -89,7 +89,7 @@ export default function EmergencyModal({ visible, onClose }: Props) {
 
   const handleCall = (phoneNumber: string) => {
     Linking.openURL(`tel:${phoneNumber}`).catch(() => {
-      Alert.alert(t('common.error'), 'Không thể khởi chạy cuộc gọi trên thiết bị này.');
+      Alert.alert(t('common.error'), t('common.cannotMakeCall'));
     });
   };
 
@@ -114,7 +114,7 @@ export default function EmergencyModal({ visible, onClose }: Props) {
 
       const coords = `${location.coords.latitude},${location.coords.longitude}`;
       const mapsUrl = `https://maps.google.com/?q=${coords}`;
-      const messageBody = `[SOS KHẨN CẤP] Mình đang cần hỗ trợ khẩn cấp tại ĐH Vinh! Vị trí hiện tại của mình: ${mapsUrl}`;
+      const messageBody = t('emergency.sosSmsBody', { url: mapsUrl });
 
       // Gửi SMS trực tiếp tới số người thân đã lưu
       const targetPhone = contact.phone.replace(/[^0-9+]/g, '');
@@ -124,7 +124,7 @@ export default function EmergencyModal({ visible, onClose }: Props) {
 
       Linking.openURL(smsUrl);
     } catch (err) {
-      Alert.alert(t('common.error'), 'Không thể lấy tọa độ hiện tại. Vui lòng bật GPS.');
+      Alert.alert(t('common.error'), t('common.locationError'));
     } finally {
       setSendingLocation(false);
     }
@@ -183,7 +183,7 @@ export default function EmergencyModal({ visible, onClose }: Props) {
               {contact ? t('emergency.subtitle') : t('emergency.setupPersonalDesc')}
             </Text>
 
-            {/* Dynamic Main SOS Button */}
+            {/* Smart SOS Action Section */}
             {contact ? (
               <View style={styles.sosButtonWrapper}>
                 <TouchableOpacity
@@ -264,12 +264,12 @@ export default function EmergencyModal({ visible, onClose }: Props) {
                           <Text style={styles.itemTitle}>{item.name}</Text>
                           {item.isPersonal && (
                             <View style={styles.personalBadge}>
-                              <Text style={styles.personalBadgeText}>Cá nhân</Text>
+                              <Text style={styles.personalBadgeText}>{t('common.personal')}</Text>
                             </View>
                           )}
                         </View>
                         <Text style={styles.itemSubtitle}>
-                          {item.description || item.ward || 'Liên hệ trực tiếp 24/7'}
+                          {item.description || item.ward || t('emergency.support247')}
                         </Text>
                       </View>
 

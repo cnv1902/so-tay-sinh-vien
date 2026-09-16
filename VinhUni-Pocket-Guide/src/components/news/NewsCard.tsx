@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { colors, radius, spacing, typography, shadows } from '../../design';
+import { useTranslation } from 'react-i18next';
 import { stripHtml } from '../../utils/htmlUtils';
 import type { News } from '../../types/news';
 
@@ -13,6 +14,12 @@ interface Props {
 
 export default function NewsCard({ news }: Props) {
   const router = useRouter();
+  const { t, i18n } = useTranslation();
+  const currentLocale = (i18n.language || 'vi').startsWith('en')
+    ? 'en-US'
+    : (i18n.language || 'vi').startsWith('lo')
+    ? 'lo-LA'
+    : 'vi-VN';
 
   const handlePress = () => {
     router.push(`/news/${news.id}`);
@@ -25,7 +32,7 @@ export default function NewsCard({ news }: Props) {
     return clean;
   })();
 
-  const formattedDate = new Date(news.created_at).toLocaleDateString('vi-VN', {
+  const formattedDate = new Date(news.created_at).toLocaleDateString(currentLocale, {
     day: '2-digit',
     month: 'long',
     year: 'numeric'
@@ -47,7 +54,7 @@ export default function NewsCard({ news }: Props) {
         {news.is_pinned && (
           <View style={styles.pinBadge}>
             <Ionicons name="pin" size={12} color="#fff" />
-            <Text style={styles.pinText}>Ghim</Text>
+            <Text style={styles.pinText}>{t('news.pinned')}</Text>
           </View>
         )}
       </View>
